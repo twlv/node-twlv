@@ -1,5 +1,5 @@
 {
-  "name": "twlv",
+  "name": "node-twlv",
   "version": "0.0.1",
   "description": "TWLV P2P Framework",
   "main": "node.js",
