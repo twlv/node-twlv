@@ -1,7 +1,7 @@
 {
-  "name": "p2p",
+  "name": "twlv",
   "version": "0.0.1",
-  "description": "P2P",
+  "description": "TWLV P2P Framework",
   "main": "node.js",
   "scripts": {
     "lint": "eslint .",
