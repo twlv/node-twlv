@@ -1,9 +1,12 @@
-const { Peer } = require('../peer');
-
 const finders = [];
 
 class MemoryFinder {
+  static reset () {
+    finders.splice(0);
+  }
+
   constructor (node) {
+    this.name = 'memory';
     this.node = node;
 
     finders.push(this);
@@ -11,12 +14,20 @@ class MemoryFinder {
 
   find (address) {
     let finder = finders.find(finder => finder.node.identity.address === address);
-    return new Peer(finder.node.advertisement);
+    if (!finder) {
+      return;
+    }
+
+    return finder.node.advertisement;
+  }
+
+  up () {
+    // noop
+  }
+
+  down () {
+    // noop
   }
 }
 
-function removeAllFinders () {
-  finders.splice(0);
-}
-
-module.exports = { MemoryFinder, removeAllFinders };
+module.exports = MemoryFinder;

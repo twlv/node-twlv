@@ -1,7 +1,7 @@
 const lpstream = require('length-prefixed-stream');
 const { Identity } = require('./identity');
 const { Readable } = require('stream');
-const { encode, decode, MODE_ENCRYPTED, MODE_SIGNED } = require('./codec');
+const { encode, decode, MODE_PLAIN, MODE_ENCRYPTED, MODE_SIGNED } = require('./codec');
 
 class Connection extends Readable {
   constructor ({ identity, socket }) {
@@ -20,90 +20,92 @@ class Connection extends Readable {
 
   handshake (nodeAdv) {
     return new Promise((resolve, reject) => {
-      this.decoder.on('readable', () => {
-        try {
-          let frame = this.decoder.read();
-          if (!frame) {
-            return;
-          }
+      let resultAdv;
 
-          let message = decode(frame);
+      let _onHandshakingReadable = () => {
+        let frame;
+        while ((frame = this.decoder.read())) {
+          try {
+            let message = decode(frame);
 
-          let { command, sig, payload } = message;
-          if (command === 'handshake') {
-            let advertisement = JSON.parse(payload);
-            let identity = new Identity(advertisement.pubKey);
-            if (identity.address !== advertisement.address) {
-              throw new Error('Handshake failed');
-            }
-            this.peerIdentity = identity;
-            this.write({
-              command: 'handshake-ack',
-              payload: JSON.stringify({
-                nonce: advertisement.nonce,
-              }),
-            });
-          } else if (command === 'handshake-ack') {
-            if (!this.peerIdentity.verify(payload, sig)) {
-              throw new Error('Handshake signature unverified');
-            }
-
-            let advertisement = JSON.parse(this.identity.decrypt(payload));
-            if (advertisement.nonce !== nonce) {
-              throw new Error('Invalid nonce');
-            }
-
-            this.decoder.removeAllListeners('readable');
-            this.decoder.on('readable', () => {
-              let frame = this.decoder.read();
-              if (!frame) {
-                return;
+            let { command, sig, payload } = message;
+            if (command === 'handshake') {
+              resultAdv = JSON.parse(payload);
+              let { address, pubKey, nonce } = resultAdv;
+              let identity = new Identity(pubKey);
+              if (identity.address !== address) {
+                throw new Error('Handshake failed');
+              }
+              this.peerIdentity = identity;
+              this.write({
+                command: 'handshake-ack',
+                payload: JSON.stringify({ nonce }),
+              });
+            } else if (command === 'handshake-ack') {
+              if (!this.peerIdentity.verify(payload, sig)) {
+                throw new Error('Handshake signature unverified');
               }
 
-              let message = decode(frame);
+              let ack = JSON.parse(this.identity.decrypt(payload));
+              if (ack.nonce !== nonce) {
+                throw new Error('Invalid nonce');
+              }
 
-              if (message.mode & MODE_SIGNED) {
-                if (!this.peerIdentity || !this.peerIdentity.verify(message.payload, message.sig)) {
-                  return console.warn('Inbound message error, Failed to verify message');
+              this.decoder.removeListener('readable', _onHandshakingReadable);
+              this.decoder.on('readable', () => {
+                let frame;
+                while ((frame = this.decoder.read())) {
+                  let message = decode(frame);
+
+                  if (message.mode & MODE_SIGNED) {
+                    if (!this.peerIdentity || !this.peerIdentity.verify(message.payload, message.sig)) {
+                      return console.warn('Inbound message error, Failed to verify message');
+                    }
+                  }
+
+                  if (message.mode & MODE_ENCRYPTED) {
+                    if (!this.identity) {
+                      return console.warn('Inbound message error, Failed to decrypt message');
+                    }
+
+                    message.originalPayload = message.payload;
+                    message.payload = this.identity.decrypt(message.payload);
+                  }
+
+                  this.push(message);
                 }
-              }
+              });
 
-              if (message.mode & MODE_ENCRYPTED) {
-                if (!this.identity) {
-                  return console.warn('Inbound message error, Failed to decrypt message');
-                }
-
-                message.originalPayload = message.payload;
-                message.payload = this.identity.decrypt(message.payload);
-              }
-
-              this.push(message);
-            });
-
-            resolve();
+              resolve(resultAdv);
+            }
+          } catch (err) {
+            return reject(err);
           }
-        } catch (err) {
-          return reject(err);
         }
-      });
+      };
+
+      this.decoder.on('readable', _onHandshakingReadable);
 
       let { address, pubKey, urls, timestamp } = nodeAdv;
       let nonce = Math.floor(Math.random() * 65536).toString(16);
-      let advertisement = { address, pubKey, urls, timestamp, nonce };
-
       this.write({
         command: 'handshake',
-        payload: JSON.stringify(advertisement),
+        payload: JSON.stringify({ address, pubKey, urls, timestamp, nonce }),
         mode: MODE_SIGNED,
       });
     });
   }
 
   write ({ mode = MODE_SIGNED | MODE_ENCRYPTED, command, payload }) {
-    let source = this.identity.address;
-    let destination = this.peerIdentity ? this.peerIdentity.address : undefined;
+    let from = this.identity.address;
+    let to = this.peerIdentity ? this.peerIdentity.address : undefined;
 
-    payload = payload ? Buffer.from(payload) : Buffer.alloc(0);
+    if (!payload) {
+      mode = MODE_PLAIN;
+      payload = Buffer.alloc(0);
+    } else if (payload instanceof Buffer === false) {
+      payload = Buffer.from(payload);
+    }
 
     if (mode & MODE_ENCRYPTED) {
       if (!this.peerIdentity) {
@@ -125,7 +127,7 @@ class Connection extends Readable {
       sig = this.identity.sign(payload);
     }
 
-    this.encoder.write(encode({ mode, source, destination, command, sig, payload }));
+    this.encoder.write(encode({ mode, from, to, command, sig, payload }));
   }
 
   end () {

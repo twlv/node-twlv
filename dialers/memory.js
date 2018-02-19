@@ -1,22 +1,44 @@
-const { URL } = require('url');
-const { MemorySocket, getListener } = require('../listeners/memory');
+const { getListener } = require('../listeners/memory');
+const { Duplex } = require('stream');
 
 class MemoryDialer {
-  constructor (node) {
-    this.name = 'memory';
-    this.node = node;
+  constructor () {
+    this.proto = 'memory';
   }
 
   dial (url) {
-    url = new URL(url);
-
     let socket = new MemorySocket();
+    let address = url.split(':').pop();
+    let listener = getListener(address);
 
-    let listener = getListener(url.pathname);
-    listener._incoming(socket);
+    if (!listener) {
+      throw new Error(`Error dialing ${url}`);
+    }
+
+    listener.emit('socket', new MemorySocket(socket));
 
     return socket;
   }
 }
 
-module.exports = { MemoryDialer };
+class MemorySocket extends Duplex {
+  constructor (peer) {
+    super();
+
+    if (peer) {
+      this.peer = peer;
+      peer.peer = this;
+    }
+  }
+
+  _write (data, encoding, cb) {
+    this.peer.push(data);
+    cb();
+  }
+
+  _read () {
+    // do nothing
+  }
+}
+
+module.exports = MemoryDialer;

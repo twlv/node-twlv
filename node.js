@@ -1,6 +1,8 @@
 const { EventEmitter } = require('events');
 const { Identity } = require('./identity');
 const { Connection } = require('./connection');
+const { Registry } = require('./registry');
+const assert = require('assert');
 
 class Node extends EventEmitter {
   constructor ({ identity } = {}) {
@@ -9,12 +11,10 @@ class Node extends EventEmitter {
     this.identity = identity || Identity.generate();
     this.listeners = [];
     this.dialers = [];
-    this.finders = [];
+    this.registry = new Registry();
     this.connections = [];
-  }
 
-  get address () {
-    return this.identity.address;
+    this._onConnectionData = this._onConnectionData.bind(this);
   }
 
   get advertisement () {
@@ -27,14 +27,17 @@ class Node extends EventEmitter {
     return { address, pubKey, urls, timestamp };
   }
 
+  _onConnectionData (data) {
+    if (data.to !== this.identity.address) {
+      console.warn('Invalid destination');
+      return;
+    }
+
+    this.emit('message', data);
+  }
+
   addListener (listener) {
-    listener.on('socket', async socket => {
-      try {
-        await this._connect(socket);
-      } catch (err) {
-        console.warn('Got ill-form socket,', err.message);
-      }
-    });
+    listener.on('socket', this._incomingSocket.bind(this));
     this.listeners.push(listener);
   }
 
@@ -43,40 +46,54 @@ class Node extends EventEmitter {
   }
 
   addFinder (finder) {
-    this.finders.push(finder);
+    this.registry.addFinder(finder);
   }
 
-  find (address) {
-    return new Promise((resolve, reject) => {
-      let timeout = setTimeout(() => reject(new Error('Find timeout')), 1000);
-      this.finders.forEach(async finder => {
-        try {
-          let peer = await finder.find(address);
-          clearTimeout(timeout);
-          resolve(peer);
-        } catch (err) {
-          console.warn('Finder caught error', err);
-        }
-      });
-    });
+  async start () {
+    await Promise.all(this.listeners.map(listener => listener.up()));
+    await this.registry.up();
+  }
+
+  async stop () {
+    await this.registry.down();
+    await Promise.all(this.listeners.map(listener => listener.down()));
+  }
+
+  find (address, options) {
+    return this.registry.find(address, options);
   }
 
   dial (url) {
     let [ proto ] = url.split(':');
-    let dialer = this.dialers.find(dialer => dialer.name === proto);
-    return dialer.dial(url, this);
+    let dialer = this.dialers.find(dialer => dialer.proto === proto);
+    if (!dialer) {
+      throw new Error(`No suitable dialer for ${url}`);
+    }
+
+    return dialer.dial(url);
   }
 
   async _connect (socket) {
     let { identity, advertisement } = this;
     let connection = new Connection({ identity, socket });
     try {
-      await connection.handshake(advertisement);
-      this.connections.push(connection);
-      this.emit('connection', connection);
+      let peerAdv = await connection.handshake(advertisement);
+
+      // when connection to address already exist
+      let oldConnection = this.connections.find(connection => connection.peerIdentity.address === peerAdv.address);
+      if (oldConnection) {
+        connection.destroy();
+        connection = oldConnection;
+      } else {
+        this.connections.push(connection);
+        connection.on('data', this._onConnectionData);
+        this.emit('connection', connection);
+      }
+
+      await this.registry.put(peerAdv);
       return connection;
     } catch (err) {
-      connection.end();
+      connection.destroy();
       throw err;
     }
   }
@@ -84,10 +101,46 @@ class Node extends EventEmitter {
   async connect (url) {
     if (url.includes(':')) {
       let socket = await this.dial(url);
-      let connection = await this._connect(socket);
+      return this._connect(socket);
+    }
+
+    let address = url;
+    let connection = this.connections.find(connection => connection.peerIdentity.address === address);
+    if (connection) {
       return connection;
-    } else {
-      throw new Error('Unimplemented connect with address yet');
+    }
+
+    let peer = await this.registry.find(address);
+    let urls = peer.getEligibleUrls(this);
+    for (let url of urls) {
+      try {
+        return this.connect(url);
+      } catch (err) {
+        console.warn(`Failed to connect to ${url}`);
+      }
+    }
+
+    throw new Error(`Failed to connect to address ${address}`);
+  }
+
+  async send (to, message) {
+    assert.notEqual(to, this.identity.address, 'Identity destination');
+
+    let connection = await this.connect(to);
+    connection.write(message);
+  }
+
+  broadcast (message) {
+    this.connections.forEach(connection => {
+      connection.write(message);
+    });
+  }
+
+  async _incomingSocket (socket) {
+    try {
+      await this._connect(socket);
+    } catch (err) {
+      console.warn('Got ill-form socket,', err.message);
     }
   }
 }

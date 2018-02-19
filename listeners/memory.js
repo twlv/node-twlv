@@ -1,53 +1,42 @@
+const assert = require('assert');
 const { EventEmitter } = require('events');
-const { Duplex } = require('stream');
 
 const listeners = [];
 
 class MemoryListener extends EventEmitter {
-  constructor (node) {
+  static getListener (address) {
+    return listeners.find(listener => listener.address === address);
+  }
+
+  static reset () {
+    listeners.splice(0);
+  }
+
+  constructor ({ address }) {
     super();
 
-    this.node = node;
+    assert(address, 'Address unspecified');
+
+    this.proto = 'memory';
+    this.address = address;
 
     listeners.push(this);
   }
 
   get urls () {
-    return [ `memory:${this.node.identity.address}` ];
+    return [ `memory:${this.address}` ];
   }
 
-  _incoming (inbound) {
-    let socket = new MemorySocket(inbound);
-    this.emit('socket', socket);
+  up () {
+    listeners.push(this);
   }
-}
 
-class MemorySocket extends Duplex {
-  constructor (peer) {
-    super();
-
-    if (peer) {
-      this.peer = peer;
-      peer.peer = this;
+  down () {
+    let index = listeners.indexOf(this);
+    if (index !== -1) {
+      listeners.splice(index, 1);
     }
   }
-
-  _write (data, encoding, cb) {
-    this.peer.push(data);
-    cb();
-  }
-
-  _read () {
-    // do nothing
-  }
 }
 
-function getListener (address) {
-  return listeners.find(listener => listener.node.address === address);
-}
-
-function removeAllListeners () {
-  listeners.splice(0);
-}
-
-module.exports = { MemoryListener, MemorySocket, getListener, removeAllListeners };
+module.exports = MemoryListener;

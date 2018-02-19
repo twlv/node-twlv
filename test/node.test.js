@@ -19,7 +19,7 @@ describe('Node', () => {
     it('add new listener', () => {
       let listenerMock = {
         listen () {},
-        on () {}
+        on () {},
       };
       let node = new Node();
       node.addListener(listenerMock);
@@ -39,15 +39,16 @@ describe('Node', () => {
   describe('#dial()', () => {
     it('invoke suitable dialer', async () => {
       let fooDialer = {
-        name: 'foo',
+        proto: 'foo',
 
         dial (url) {
           this.dialedUrl = url;
           return {};
         },
       };
+
       let barDialer = {
-        name: 'bar',
+        proto: 'bar',
 
         dial (url) {
           this.dialedUrl = url;
@@ -63,6 +64,31 @@ describe('Node', () => {
 
       assert.equal(fooDialer.dialedUrl, 'foo:1');
       assert.equal(barDialer.dialedUrl, 'bar:2');
+    });
+  });
+
+  describe('#advertisement', () => {
+    it('has address and pubKey field', () => {
+      let node = new Node();
+      node.addListener({
+        on () {},
+        get urls () {
+          return ['foo:1'];
+        },
+      });
+
+      node.addListener({
+        on () {},
+        get urls () {
+          return ['bar:1'];
+        },
+      });
+
+      let advertisement = node.advertisement;
+      assert.equal(advertisement.address, node.identity.address);
+      assert.equal(advertisement.pubKey, node.identity.pubKey);
+      assert.equal(advertisement.urls[0], 'foo:1');
+      assert.equal(advertisement.urls[1], 'bar:1');
     });
   });
 });

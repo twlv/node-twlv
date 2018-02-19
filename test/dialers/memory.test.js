@@ -1,10 +1,23 @@
 const assert = require('assert');
-const { MemoryListener, removeAllListeners } = require('../../listeners/memory');
-const { MemoryDialer } = require('../../dialers/memory');
+const MemoryListener = require('../../listeners/memory');
+const MemoryDialer = require('../../dialers/memory');
 
 describe('Memory listener and dialer', () => {
   beforeEach(() => {
-    removeAllListeners();
+    MemoryListener.reset();
+  });
+
+  it('caught error on dialing unknown url', async () => {
+    let dialer = new MemoryDialer({ address: 'foo' });
+
+    try {
+      await dialer.dial('memory:bar');
+      throw new Error('Oops');
+    } catch (err) {
+      if (err.message === 'Oops') {
+        throw err;
+      }
+    }
   });
 
   it('listening and dialing', async () => {
@@ -19,20 +32,25 @@ describe('Memory listener and dialer', () => {
     let dialerSocket = await dialer.dial('memory:1');
 
     let listenerData;
-    let dialerData;
-
-    listenerSocket.on('data', data => {
-      listenerData = data.toString();
+    let listenerDataReady = new Promise(resolve => {
+      listenerSocket.on('data', data => {
+        listenerData = data.toString();
+        resolve();
+      });
     });
 
-    dialerSocket.on('data', data => {
-      dialerData = data.toString();
+    let dialerData;
+    let dialerDataReady = new Promise(resolve => {
+      dialerSocket.on('data', data => {
+        dialerData = data.toString();
+        resolve();
+      });
     });
 
     dialerSocket.write('foo');
     listenerSocket.write('bar');
 
-    await new Promise(resolve => setTimeout(resolve));
+    await Promise.all([ listenerDataReady, dialerDataReady ]);
 
     assert.equal(listenerData, 'foo');
     assert.equal(dialerData, 'bar');
