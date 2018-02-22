@@ -56,39 +56,62 @@ describe('Node', () => {
         },
       };
       let node = new Node();
+
       node.addDialer(fooDialer);
       node.addDialer(barDialer);
 
-      await node.dial(`foo:1`);
-      await node.dial(`bar:2`);
+      try {
+        await node.start();
 
-      assert.equal(fooDialer.dialedUrl, 'foo:1');
-      assert.equal(barDialer.dialedUrl, 'bar:2');
+        await node.dial(`foo:1`);
+        await node.dial(`bar:2`);
+
+        assert.equal(fooDialer.dialedUrl, 'foo:1');
+        assert.equal(barDialer.dialedUrl, 'bar:2');
+      } finally {
+        await node.stop();
+      }
     });
   });
 
   describe('#advertisement', () => {
-    it('has address and pubKey field', () => {
+    it('return empty advertisement from stopped node', () => {
       let node = new Node();
-      node.addListener({
-        on () {},
-        get urls () {
-          return ['foo:1'];
-        },
-      });
 
-      node.addListener({
-        on () {},
-        get urls () {
-          return ['bar:1'];
-        },
-      });
+      assert(!node.advertisement);
+    });
+    it('has address and pubKey field', async () => {
+      let node = new Node();
 
-      let advertisement = node.advertisement;
-      assert.equal(advertisement.address, node.identity.address);
-      assert.equal(advertisement.pubKey, node.identity.pubKey);
-      assert.equal(advertisement.urls[0], 'foo:1');
-      assert.equal(advertisement.urls[1], 'bar:1');
+      try {
+        node.addListener({
+          on () {},
+          get urls () {
+            return ['foo:1'];
+          },
+          up () {},
+          down () {},
+        });
+
+        node.addListener({
+          on () {},
+          get urls () {
+            return ['bar:1'];
+          },
+          up () {},
+          down () {},
+        });
+
+        await node.start();
+
+        let advertisement = node.advertisement;
+        assert.equal(advertisement.address, node.identity.address);
+        assert.equal(advertisement.pubKey, node.identity.pubKey);
+        assert.equal(advertisement.urls[0], 'foo:1');
+        assert.equal(advertisement.urls[1], 'bar:1');
+      } finally {
+        await node.stop();
+      }
     });
   });
 });

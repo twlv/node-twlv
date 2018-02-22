@@ -9,15 +9,19 @@ class Node extends EventEmitter {
     super();
 
     this.identity = identity || Identity.generate();
+    this.running = false;
     this.listeners = [];
     this.dialers = [];
     this.registry = new Registry();
     this.connections = [];
-
-    this._onConnectionData = this._onConnectionData.bind(this);
   }
 
   get advertisement () {
+    // do not advertise when node is not running
+    if (!this.running) {
+      return;
+    }
+
     let { address, pubKey } = this.identity;
     let timestamp = new Date();
     let urls = this.listeners.reduce((result, listener) => {
@@ -27,43 +31,68 @@ class Node extends EventEmitter {
     return { address, pubKey, urls, timestamp };
   }
 
-  _onConnectionData (data) {
-    if (data.to !== this.identity.address) {
-      console.warn('Invalid destination');
-      return;
-    }
+  generate () {
+    assert(!this.running, 'Cannot generate identity on running node');
 
-    this.emit('message', data);
+    this.identity = Identity.generate();
+  }
+
+  authenticate (identity) {
+    assert(!this.running, 'Cannot authenticate on running node');
+
+    this.identity = identity;
+  }
+
+  deauthenticate () {
+    assert(!this.running, 'Cannot deauthenticate on running node');
+
+    this.identity = null;
   }
 
   addListener (listener) {
+    assert(!this.running, 'Cannot add listener on running node');
+
     listener.on('socket', this._incomingSocket.bind(this));
     this.listeners.push(listener);
   }
 
   addDialer (dialer) {
+    assert(!this.running, 'Cannot add dialer on running node');
+
     this.dialers.push(dialer);
   }
 
   addFinder (finder) {
+    assert(!this.running, 'Cannot add finder on running node');
+
     this.registry.addFinder(finder);
   }
 
   async start () {
+    assert(!this.running, 'Cannot start already running node');
+
     await Promise.all(this.listeners.map(listener => listener.up()));
     await this.registry.up();
+    this.running = true;
   }
 
   async stop () {
+    assert(this.running, 'Cannot stop stopped node');
+
+    this.running = false;
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
   }
 
   find (address, options) {
+    assert(this.running, 'Cannot find on stopped node');
+
     return this.registry.find(address, options);
   }
 
   dial (url) {
+    assert(this.running, 'Cannot dial on stopped node');
+
     let [ proto ] = url.split(':');
     let dialer = this.dialers.find(dialer => dialer.proto === proto);
     if (!dialer) {
@@ -86,7 +115,7 @@ class Node extends EventEmitter {
         connection = oldConnection;
       } else {
         this.connections.push(connection);
-        connection.on('data', this._onConnectionData);
+        connection.on('data', this._onConnectionData.bind(this));
         this.emit('connection', connection);
       }
 
@@ -99,6 +128,8 @@ class Node extends EventEmitter {
   }
 
   async connect (url) {
+    assert(this.running, 'Cannot connect on stopped node');
+
     if (url.includes(':')) {
       let socket = await this.dial(url);
       return this._connect(socket);
@@ -124,6 +155,8 @@ class Node extends EventEmitter {
   }
 
   async send (to, message) {
+    assert(this.running, 'Cannot send on stopped node');
+
     assert.notEqual(to, this.identity.address, 'Identity destination');
 
     let connection = await this.connect(to);
@@ -131,9 +164,20 @@ class Node extends EventEmitter {
   }
 
   broadcast (message) {
+    assert(this.running, 'Cannot broadcast on stopped node');
+
     this.connections.forEach(connection => {
       connection.write(message);
     });
+  }
+
+  _onConnectionData (data) {
+    if (data.to !== this.identity.address) {
+      console.warn('Invalid destination');
+      return;
+    }
+
+    this.emit('message', data);
   }
 
   async _incomingSocket (socket) {

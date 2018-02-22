@@ -25,17 +25,25 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
-      node1.addFinder(new MemoryFinder(node1));
+      try {
+        node1.addListener(new MemoryListener(node1.identity));
+        node1.addFinder(new MemoryFinder(node1));
 
-      node2.addListener(new MemoryListener(node2.identity));
-      node2.addFinder(new MemoryFinder(node2));
+        node2.addListener(new MemoryListener(node2.identity));
+        node2.addFinder(new MemoryFinder(node2));
 
-      let peer = await node1.find(node2.identity.address);
+        await node1.start();
+        await node2.start();
 
-      assert.equal(peer.address, node2.identity.address);
-      assert.equal(peer.pubKey, node2.identity.pubKey);
-      assert.equal(peer.urls[0], `memory:${node2.identity.address}`);
+        let peer = await node1.find(node2.identity.address);
+
+        assert.equal(peer.address, node2.identity.address);
+        assert.equal(peer.pubKey, node2.identity.pubKey);
+        assert.equal(peer.urls[0], `memory:${node2.identity.address}`);
+      } finally {
+        await node1.stop();
+        await node2.stop();
+      }
     });
 
     it('throw error when no peer with address', async () => {
@@ -43,12 +51,15 @@ describe('cases', () => {
       node1.addFinder(new MemoryFinder(node1));
 
       try {
+        await node1.start();
         await node1.find('foo');
         throw new Error('Oops');
       } catch (err) {
         if (err.message !== 'Peer not found') {
           throw err;
         }
+      } finally {
+        await node1.stop();
       }
     });
 
@@ -58,21 +69,29 @@ describe('cases', () => {
         find (address) {
           return new Promise(resolve => {});
         },
+        up () {},
+        down () {},
       });
 
       node1.addFinder({
         find (address) {
           return new Promise(resolve => {});
         },
+        up () {},
+        down () {},
       });
 
       try {
+        await node1.start();
+
         await node1.find('foo', { timeout: 100 });
         throw new Error('Oops');
       } catch (err) {
         if (err.message !== 'Find timeout') {
           throw err;
         }
+      } finally {
+        await node1.stop();
       }
     });
   });
@@ -88,12 +107,20 @@ describe('cases', () => {
       node2.addListener(new MemoryListener(node2.identity));
       node2.addDialer(new MemoryDialer());
 
-      let connection = await node1.connect(`memory:${node2.identity.address}`);
+      try {
+        await node1.start();
+        await node2.start();
 
-      assert(connection);
-      assert.equal(connection, node1.connections[0]);
-      assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
-      assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+        let connection = await node1.connect(`memory:${node2.identity.address}`);
+
+        assert(connection);
+        assert.equal(connection, node1.connections[0]);
+        assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
+        assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+      } finally {
+        await node1.stop();
+        await node2.stop();
+      }
     });
 
     it('connect nodes by its address', async () => {
@@ -108,12 +135,20 @@ describe('cases', () => {
       node2.addDialer(new MemoryDialer());
       node2.addFinder(new MemoryFinder(node2));
 
-      let connection = await node1.connect(node2.identity.address);
+      try {
+        await node1.start();
+        await node2.start();
 
-      assert(connection);
-      assert.equal(connection, node1.connections[0]);
-      assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
-      assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+        let connection = await node1.connect(node2.identity.address);
+
+        assert(connection);
+        assert.equal(connection, node1.connections[0]);
+        assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
+        assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+      } finally {
+        await node1.stop();
+        await node2.stop();
+      }
     });
   });
 
@@ -219,32 +254,40 @@ describe('cases', () => {
   });
 
   describe('connect to already connected connection', () => {
-    it.only('x', async () => {
+    it('reuse connection', async () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
-      node1.addDialer(new MemoryDialer());
+      try {
+        node1.addListener(new MemoryListener(node1.identity));
+        node1.addDialer(new MemoryDialer());
 
-      node2.addListener(new MemoryListener(node2.identity));
-      node2.addDialer(new MemoryDialer());
+        node2.addListener(new MemoryListener(node2.identity));
+        node2.addDialer(new MemoryDialer());
 
-      await node1.connect(`memory:${node2.identity.address}`);
+        await node1.start();
+        await node2.start();
 
-      assert.equal(node1.connections.length, 1);
-      assert.equal(node2.connections.length, 1);
+        await node1.connect(`memory:${node2.identity.address}`);
 
-      let oldConnection = node1.connections[0];
-      let connection = await node1.connect(`memory:${node2.identity.address}`);
-      assert.equal(node1.connections.length, 1);
-      assert.equal(node2.connections.length, 1);
-      assert.equal(connection, oldConnection);
+        assert.equal(node1.connections.length, 1);
+        assert.equal(node2.connections.length, 1);
 
-      oldConnection = node2.connections[0];
-      connection = await node2.connect(`memory:${node1.identity.address}`);
-      assert.equal(node1.connections.length, 1);
-      assert.equal(node2.connections.length, 1);
-      assert.equal(connection, oldConnection);
+        let oldConnection = node1.connections[0];
+        let connection = await node1.connect(`memory:${node2.identity.address}`);
+        assert.equal(node1.connections.length, 1);
+        assert.equal(node2.connections.length, 1);
+        assert.equal(connection, oldConnection);
+
+        oldConnection = node2.connections[0];
+        connection = await node2.connect(`memory:${node1.identity.address}`);
+        assert.equal(node1.connections.length, 1);
+        assert.equal(node2.connections.length, 1);
+        assert.equal(connection, oldConnection);
+      } finally {
+        await node1.stop();
+        await node2.stop();
+      }
     });
   });
 });
