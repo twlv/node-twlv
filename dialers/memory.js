@@ -15,7 +15,7 @@ class MemoryDialer {
       throw new Error(`Error dialing ${url}`);
     }
 
-    listener.emit('socket', new MemorySocket(socket));
+    listener._incoming(new MemorySocket(socket));
 
     return socket;
   }

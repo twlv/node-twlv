@@ -5,37 +5,45 @@ const listeners = [];
 
 class MemoryListener extends EventEmitter {
   static getListener (address) {
-    return listeners.find(listener => listener.address === address);
+    return listeners.find(listener => listener.node.address === address);
   }
 
   static reset () {
     listeners.splice(0);
   }
 
-  constructor ({ address }) {
+  constructor (node) {
     super();
 
-    assert(address, 'Address unspecified');
-
     this.proto = 'memory';
-    this.address = address;
+    this.node = node;
+    this._upped = false;
 
     listeners.push(this);
   }
 
   get urls () {
-    return [ `memory:${this.address}` ];
+    return [ `memory:${this.node.address}` ];
   }
 
   up () {
     listeners.push(this);
+    this._upped = true;
   }
 
   down () {
+    this._upped = false;
+
     let index = listeners.indexOf(this);
     if (index !== -1) {
       listeners.splice(index, 1);
     }
+  }
+
+  _incoming (socket) {
+    assert(this._upped, 'Cannot bind down peer');
+
+    this.emit('socket', socket);
   }
 }
 

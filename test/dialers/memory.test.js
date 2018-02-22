@@ -29,30 +29,36 @@ describe('Memory listener and dialer', () => {
       listenerSocket = socket;
     });
 
-    let dialerSocket = await dialer.dial('memory:1');
+    try {
+      await listener.up();
 
-    let listenerData;
-    let listenerDataReady = new Promise(resolve => {
-      listenerSocket.on('data', data => {
-        listenerData = data.toString();
-        resolve();
+      let dialerSocket = await dialer.dial('memory:1');
+
+      let listenerData;
+      let listenerDataReady = new Promise(resolve => {
+        listenerSocket.on('data', data => {
+          listenerData = data.toString();
+          resolve();
+        });
       });
-    });
 
-    let dialerData;
-    let dialerDataReady = new Promise(resolve => {
-      dialerSocket.on('data', data => {
-        dialerData = data.toString();
-        resolve();
+      let dialerData;
+      let dialerDataReady = new Promise(resolve => {
+        dialerSocket.on('data', data => {
+          dialerData = data.toString();
+          resolve();
+        });
       });
-    });
 
-    dialerSocket.write('foo');
-    listenerSocket.write('bar');
+      dialerSocket.write('foo');
+      listenerSocket.write('bar');
 
-    await Promise.all([ listenerDataReady, dialerDataReady ]);
+      await Promise.all([ listenerDataReady, dialerDataReady ]);
 
-    assert.equal(listenerData, 'foo');
-    assert.equal(dialerData, 'bar');
+      assert.equal(listenerData, 'foo');
+      assert.equal(dialerData, 'bar');
+    } finally {
+      await listener.down();
+    }
   });
 });
