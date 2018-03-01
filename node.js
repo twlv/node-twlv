@@ -31,10 +31,10 @@ class Node extends EventEmitter {
     return { address, pubKey, urls, timestamp };
   }
 
-  generate () {
+  async generate () {
     assert(!this.running, 'Cannot generate identity on running node');
 
-    this.identity = Identity.generate();
+    this.identity = await Identity.generate();
   }
 
   authenticate (identity) {
@@ -71,17 +71,17 @@ class Node extends EventEmitter {
   async start () {
     assert(!this.running, 'Cannot start already running node');
 
+    this.running = true;
     await Promise.all(this.listeners.map(listener => listener.up()));
     await this.registry.up();
-    this.running = true;
   }
 
   async stop () {
     assert(this.running, 'Cannot stop stopped node');
 
-    this.running = false;
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
+    this.running = false;
   }
 
   find (address, options) {
@@ -147,7 +147,7 @@ class Node extends EventEmitter {
       try {
         return this.connect(url);
       } catch (err) {
-        console.warn(`Failed to connect to ${url}`);
+        console.warn(`Failed to connect to url ${url}`);
       }
     }
 
