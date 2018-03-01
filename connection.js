@@ -104,7 +104,11 @@ class Connection extends Readable {
       mode = MODE_PLAIN;
       payload = Buffer.alloc(0);
     } else if (payload instanceof Buffer === false) {
-      payload = Buffer.from(payload);
+      try {
+        payload = Buffer.from(payload);
+      } catch (err) {
+        throw new Error('Payload unserialized');
+      }
     }
 
     if (mode & MODE_ENCRYPTED) {
