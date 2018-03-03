@@ -159,7 +159,7 @@ class Connection extends Readable {
     this.decoder.destroy();
 
     this.emit('close');
-    callback();
+    callback(err);
   }
 }
 

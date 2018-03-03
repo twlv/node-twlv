@@ -83,7 +83,7 @@ class Node extends EventEmitter {
 
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
-    
+
     this.connections.forEach(connection => connection.destroy());
     this.running = false;
   }
