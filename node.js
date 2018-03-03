@@ -72,6 +72,8 @@ class Node extends EventEmitter {
     assert(!this.running, 'Cannot start already running node');
 
     this.running = true;
+    this.connections = [];
+
     await Promise.all(this.listeners.map(listener => listener.up()));
     await this.registry.up();
   }
@@ -81,6 +83,8 @@ class Node extends EventEmitter {
 
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
+    
+    this.connections.forEach(connection => connection.destroy());
     this.running = false;
   }
 
@@ -105,6 +109,12 @@ class Node extends EventEmitter {
   async _connect (socket) {
     let { identity, advertisement } = this;
     let connection = new Connection({ identity, socket });
+    connection.on('close', () => {
+      let index = this.connections.indexOf(connection);
+      if (index !== -1) {
+        this.connections.splice(index, 1);
+      }
+    });
     try {
       let peerAdv = await connection.handshake(advertisement);
 
@@ -145,9 +155,14 @@ class Node extends EventEmitter {
     let urls = peer.getEligibleUrls(this);
     for (let url of urls) {
       try {
-        return this.connect(url);
+        let connection = await this.connect(url);
+        if (connection.peerIdentity.address !== address) {
+          connection.destroy();
+          throw new Error('Connect to invalid peer address ' + address);
+        }
+        return connection;
       } catch (err) {
-        console.warn(`Failed to connect to url ${url}`);
+        console.warn(`Failed trying to connect to url ${url}, caused by: ${err.message}`);
       }
     }
 

@@ -152,6 +152,15 @@ class Connection extends Readable {
   _read () {
     // noop
   }
+
+  _destroy (err, callback) {
+    this.socket.destroy();
+    this.encoder.destroy();
+    this.decoder.destroy();
+
+    this.emit('close');
+    callback();
+  }
 }
 
 module.exports = { Connection };
