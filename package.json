@@ -1,6 +1,6 @@
 {
   "name": "node-twlv",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "TWLV P2P Framework",
   "main": "node.js",
   "repository": {
