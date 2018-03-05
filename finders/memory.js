@@ -1,32 +1,34 @@
-const finders = [];
+const nodes = [];
 
 class MemoryFinder {
   static reset () {
-    finders.splice(0);
+    nodes.splice(0);
   }
 
   constructor (node) {
     this.name = 'memory';
-    this.node = node;
-
-    finders.push(this);
   }
 
   find (address) {
-    let finder = finders.find(finder => finder.node.identity.address === address);
-    if (!finder) {
+    let node = nodes.find(node => node.identity.address === address);
+    if (!node) {
       return;
     }
 
-    return finder.node.advertisement;
+    return node.advertisement;
   }
 
-  up () {
-    // noop
+  up (node) {
+    this.node = node;
+    nodes.push(this.node);
   }
 
   down () {
-    // noop
+    let index = nodes.indexOf(this.node);
+    if (index !== -1) {
+      nodes.splice(index, 1);
+    }
+    this.node = undefined;
   }
 }
 

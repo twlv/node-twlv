@@ -8,7 +8,7 @@ describe('Memory listener and dialer', () => {
   });
 
   it('caught error on dialing unknown url', async () => {
-    let dialer = new MemoryDialer({ address: 'foo' });
+    let dialer = new MemoryDialer();
 
     try {
       await dialer.dial('memory:bar');
@@ -21,8 +21,8 @@ describe('Memory listener and dialer', () => {
   });
 
   it('listening and dialing', async () => {
-    let listener = new MemoryListener({ address: '1' });
-    let dialer = new MemoryDialer({ address: '2' });
+    let listener = new MemoryListener();
+    let dialer = new MemoryDialer();
 
     let listenerSocket;
     listener.on('socket', socket => {
@@ -30,7 +30,7 @@ describe('Memory listener and dialer', () => {
     });
 
     try {
-      await listener.up();
+      await listener.up({ identity: { address: '1' } });
 
       let dialerSocket = await dialer.dial('memory:1');
 

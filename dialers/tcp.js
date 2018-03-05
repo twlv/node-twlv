@@ -10,6 +10,7 @@ class TcpDialer {
     return new Promise((resolve, reject) => {
       let urlO = new URL(url);
       let socket = net.connect(urlO.port, urlO.hostname, () => resolve(socket));
+      socket.on('error', reject);
     });
   }
 }

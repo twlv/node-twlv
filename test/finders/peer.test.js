@@ -18,13 +18,13 @@ describe('PeerFinder', () => {
     let node2 = new Node();
     let node3 = new Node();
 
-    node1.addListener(new MemoryListener(node1.identity));
+    node1.addListener(new MemoryListener());
     node2.addDialer(new MemoryDialer());
     node3.addDialer(new MemoryDialer());
 
-    node1.addFinder(new PeerFinder(node1));
-    node2.addFinder(new PeerFinder(node2));
-    node3.addFinder(new PeerFinder(node3));
+    node1.addFinder(new PeerFinder());
+    node2.addFinder(new PeerFinder());
+    node3.addFinder(new PeerFinder());
 
     await node1.start();
     await node2.start();

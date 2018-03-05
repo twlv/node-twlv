@@ -13,9 +13,9 @@ class Registry {
     this.finders.push(finder);
   }
 
-  up () {
+  up (node) {
     this.tasks = [];
-    return Promise.all(this.finders.map(finder => finder.up()));
+    return Promise.all(this.finders.map(finder => finder.up(node)));
   }
 
   down () {

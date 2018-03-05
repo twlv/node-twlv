@@ -2,8 +2,7 @@ class PeerFinder {
   constructor (node) {
     this.name = 'peer';
 
-    this.node = node;
-    this.node.on('message', this._onNodeMessage.bind(this));
+    this._onNodeMessage = this._onNodeMessage.bind(this);
   }
 
   find (address) {
@@ -14,7 +13,7 @@ class PeerFinder {
   }
 
   async _onNodeMessage (message) {
-    if (!message.command.startsWith('peerfinder.')) {
+    if (!this.node || !message.command.startsWith('peerfinder.')) {
       return;
     }
 
@@ -41,13 +40,19 @@ class PeerFinder {
     }
   }
 
-  up () {
+  up (node) {
     this.works = [];
+
+    this.node = node;
+    this.node.on('message', this._onNodeMessage);
   }
 
   down () {
     this.works.forEach(work => work.resolve());
     this.works = [];
+
+    this.node.removeListener('message', this._onNodeMessage);
+    this.node = undefined;
   }
 }
 

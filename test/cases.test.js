@@ -26,11 +26,11 @@ describe('cases', () => {
       let node2 = new Node();
 
       try {
-        node1.addListener(new MemoryListener(node1.identity));
-        node1.addFinder(new MemoryFinder(node1));
+        node1.addListener(new MemoryListener());
+        node1.addFinder(new MemoryFinder());
 
-        node2.addListener(new MemoryListener(node2.identity));
-        node2.addFinder(new MemoryFinder(node2));
+        node2.addListener(new MemoryListener());
+        node2.addFinder(new MemoryFinder());
 
         await node1.start();
         await node2.start();
@@ -48,7 +48,7 @@ describe('cases', () => {
 
     it('throw error when no peer with address', async () => {
       let node1 = new Node();
-      node1.addFinder(new MemoryFinder(node1));
+      node1.addFinder(new MemoryFinder());
 
       try {
         await node1.start();
@@ -101,10 +101,10 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
+      node1.addListener(new MemoryListener());
       node1.addDialer(new MemoryDialer());
 
-      node2.addListener(new MemoryListener(node2.identity));
+      node2.addListener(new MemoryListener());
       node2.addDialer(new MemoryDialer());
 
       try {
@@ -127,13 +127,13 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
+      node1.addListener(new MemoryListener());
       node1.addDialer(new MemoryDialer());
-      node1.addFinder(new MemoryFinder(node1));
+      node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener(node2.identity));
+      node2.addListener(new MemoryListener());
       node2.addDialer(new MemoryDialer());
-      node2.addFinder(new MemoryFinder(node2));
+      node2.addFinder(new MemoryFinder());
 
       try {
         await node1.start();
@@ -176,13 +176,13 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
+      node1.addListener(new MemoryListener());
       node1.addDialer(new MemoryDialer());
-      node1.addFinder(new MemoryFinder(node1));
+      node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener(node2.identity));
+      node2.addListener(new MemoryListener());
       node2.addDialer(new MemoryDialer());
-      node2.addFinder(new MemoryFinder(node2));
+      node2.addFinder(new MemoryFinder());
 
       await node1.start();
       await node2.start();
@@ -215,13 +215,13 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener(node1.identity));
+      node1.addListener(new MemoryListener());
       node1.addDialer(new MemoryDialer());
-      node1.addFinder(new MemoryFinder(node1));
+      node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener(node2.identity));
+      node2.addListener(new MemoryListener());
       node2.addDialer(new MemoryDialer());
-      node2.addFinder(new MemoryFinder(node2));
+      node2.addFinder(new MemoryFinder());
 
       await node1.start();
       await node2.start();
@@ -259,10 +259,10 @@ describe('cases', () => {
       let node2 = new Node();
 
       try {
-        node1.addListener(new MemoryListener(node1.identity));
+        node1.addListener(new MemoryListener());
         node1.addDialer(new MemoryDialer());
 
-        node2.addListener(new MemoryListener(node2.identity));
+        node2.addListener(new MemoryListener());
         node2.addDialer(new MemoryDialer());
 
         await node1.start();

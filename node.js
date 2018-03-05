@@ -74,8 +74,8 @@ class Node extends EventEmitter {
     this.running = true;
     this.connections = [];
 
-    await Promise.all(this.listeners.map(listener => listener.up()));
-    await this.registry.up();
+    await Promise.all(this.listeners.map(listener => listener.up(this)));
+    await this.registry.up(this);
   }
 
   async stop () {
@@ -162,11 +162,11 @@ class Node extends EventEmitter {
         }
         return connection;
       } catch (err) {
-        console.warn(`Failed trying to connect to url ${url}, caused by: ${err.message}`);
+        this.emit('log:error', err);
       }
     }
 
-    throw new Error(`Failed to connect to address ${address}`);
+    throw new Error(`Failed connect to address ${address}`);
   }
 
   async send (to, message) {
@@ -199,7 +199,7 @@ class Node extends EventEmitter {
     try {
       await this._connect(socket);
     } catch (err) {
-      console.warn('Got ill-form socket,', err.message);
+      this.emit('log:error', err);
     }
   }
 }
