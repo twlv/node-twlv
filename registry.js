@@ -24,10 +24,12 @@ class Registry {
     return Promise.all(this.finders.map(finder => finder.down()));
   }
 
-  async find (address, { timeout = TIMEOUT_FIND } = {}) {
-    let peer = await this.get(address);
-    if (peer) {
-      return peer;
+  async find (address, { timeout = TIMEOUT_FIND, cache = true } = {}) {
+    if (cache) {
+      let peer = await this.get(address);
+      if (peer) {
+        return peer;
+      }
     }
 
     let peerInfo = await new Promise(async (resolve, reject) => {
@@ -90,6 +92,13 @@ class Registry {
     this.peers.push(peer);
 
     return peer;
+  }
+
+  invalidate (peer) {
+    let index = this.peers.findIndex(p => p.address === peer.address);
+    if (index !== -1) {
+      this.peers.splice(index, 1);
+    }
   }
 }
 

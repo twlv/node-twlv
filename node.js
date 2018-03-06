@@ -137,36 +137,59 @@ class Node extends EventEmitter {
     }
   }
 
-  async connect (url) {
+  connect (url) {
     assert(this.running, 'Cannot connect on stopped node');
 
     if (url.includes(':')) {
-      let socket = await this.dial(url);
-      return this._connect(socket);
+      return this._connectByUrl(url);
     }
 
-    let address = url;
+    return this._connectByAddress(url);
+  }
+
+  async _connectByUrl (url) {
+    return this._connect(await this.dial(url));
+  }
+
+  async _connectByAddress (address) {
     let connection = this.connections.find(connection => connection.peerIdentity.address === address);
     if (connection) {
       return connection;
     }
 
-    let peer = await this.registry.find(address);
+    let peer = await this.registry.get(address);
+    if (peer) {
+      let connection = await this._connectByPeer(peer);
+      if (connection) {
+        return connection;
+      }
+
+      await this.registry.invalidate(peer);
+    }
+
+    peer = await this.registry.find(address);
+    connection = await this._connectByPeer(peer);
+    if (connection) {
+      return connection;
+    }
+
+    throw new Error(`Failed connect to address ${address}`);
+  }
+
+  async _connectByPeer (peer) {
     let urls = peer.getEligibleUrls(this);
     for (let url of urls) {
       try {
         let connection = await this.connect(url);
-        if (connection.peerIdentity.address !== address) {
+        if (connection.peerIdentity.address !== peer.address) {
           connection.destroy();
-          throw new Error('Connect to invalid peer address ' + address);
+          throw new Error('Connect to invalid peer address ' + peer.address);
         }
         return connection;
       } catch (err) {
         this.emit('log:error', err);
       }
     }
-
-    throw new Error(`Failed connect to address ${address}`);
   }
 
   async send (to, message) {
