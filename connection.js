@@ -129,7 +129,11 @@ class HandshakingUnit {
       try {
         let message = Message.fromBuffer(frame);
         if (message.command === 'handshake') {
-          this.remote = new Peer(JSON.parse(message.payload));
+          let advertisement = JSON.parse(message.payload);
+          if (this.node.networkId !== advertisement.networkId) {
+            throw new Error('Invalid network id');
+          }
+          this.remote = new Peer(advertisement);
           let nonce = this.nonce = Math.floor(Math.random() * 65536).toString(16);
           this.send('handshake-ack', JSON.stringify({ nonce }));
         } else {

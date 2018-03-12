@@ -13,20 +13,27 @@ class Message {
     let offset = 0;
     let mode = buf.readInt8(offset++);
     let ttl = buf.readUInt8(offset++);
+    let seq = buf.readUInt16LE(offset);
+    offset += 2;
+
     let from = buf.toString('hex', offset, offset + 10);
     offset += 10;
     let to = buf.toString('hex', offset, offset + 10);
     offset += 10;
+
+    let signature = buf.slice(offset, offset + 64);
+    offset += 64;
+
     let command = readLengthPrefixed(buf, offset);
     command = command.toString('utf8');
     offset += command.length + 1;
-    let signature = readLengthPrefixed(buf, offset);
-    offset += signature.length + 1;
+
     let payload = buf.slice(offset);
 
     let message = new Message({
       mode,
       ttl,
+      seq,
       from,
       to,
       command,
@@ -46,6 +53,7 @@ class Message {
     mode = MODE_ENCRYPTED | MODE_SIGNED,
     from = '',
     to = '',
+    seq = 0,
     command = '',
     payload = Buffer.alloc(0),
     ttl = 1,
@@ -53,6 +61,7 @@ class Message {
     encrypted = Buffer.alloc(0),
   } = {}) {
     this.mode = mode;
+    this.seq = seq;
     this.from = from;
     this.to = to;
     this.ttl = ttl;
@@ -135,21 +144,24 @@ class Message {
 
     let payload = this.hasEncryptFlag() ? this.encrypted : this.payload;
     let commandBuf = getLengthPrefixed(this.command);
-    let signatureBuf = getLengthPrefixed(this.signature);
-    let buf = Buffer.alloc(22 + commandBuf.length + signatureBuf.length + payload.length);
+    let buf = Buffer.alloc(88 + commandBuf.length + payload.length);
     let offset = 0;
     buf.writeUInt8(this.mode, offset++);
     buf.writeUInt8(this.ttl, offset++);
+    buf.writeUInt16LE(this.mode, offset);
+    offset += 2;
     buf.write(this.from, offset, 10, 'hex');
     offset += 10;
     if (this.to) {
       buf.write(this.to, offset, 10, 'hex');
     }
     offset += 10;
+
+    this.signature.copy(buf, offset);
+    offset += 64;
+
     commandBuf.copy(buf, offset);
     offset += commandBuf.length;
-    signatureBuf.copy(buf, offset);
-    offset += signatureBuf.length;
 
     payload.copy(buf, offset);
 

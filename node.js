@@ -2,19 +2,22 @@ const { EventEmitter } = require('events');
 const { Identity } = require('./identity');
 const { Connection } = require('./connection');
 const { Registry } = require('./registry');
-const { Message, MODE_SIGNED, MODE_ENCRYPTED } = require('./message');
+const { Message } = require('./message');
 const assert = require('assert');
 
 class Node extends EventEmitter {
-  constructor ({ identity } = {}) {
+  constructor ({ networkId = '', identity } = {}) {
     super();
 
+    this.networkId = networkId;
     this.identity = identity || Identity.generate();
     this.running = false;
     this.listeners = [];
     this.dialers = [];
     this.registry = new Registry();
     this.connections = [];
+    this._relayed = [];
+    this._seq = -1;
   }
 
   get advertisement () {
@@ -23,13 +26,14 @@ class Node extends EventEmitter {
       return;
     }
 
+    let { networkId } = this;
     let { address, pubKey } = this.identity;
     let timestamp = new Date();
     let urls = this.listeners.reduce((result, listener) => {
       listener.urls.forEach(url => result.push(url));
       return result;
     }, []);
-    return { address, pubKey, urls, timestamp };
+    return { networkId, address, pubKey, urls, timestamp };
   }
 
   async generate () {
@@ -204,6 +208,11 @@ class Node extends EventEmitter {
     connection.write(message);
   }
 
+  nextSeq () {
+    this._seq = ++this._seq & 0xffff;
+    return this._seq;
+  }
+
   async relay (message) {
     assert(this.running, 'Cannot send on stopped node');
 
@@ -214,6 +223,7 @@ class Node extends EventEmitter {
 
     message = Message.from(message);
     message.from = this.identity.address;
+    message.seq = this.nextSeq();
 
     let peer = await this.find(message.to);
     assert(peer, 'Relay message needs peer to encrypt');
@@ -221,19 +231,20 @@ class Node extends EventEmitter {
     message.encrypt(peer);
     message.sign(this.identity);
 
-    // let connection = this.connections.find(connection => connection.peer.address === message.to);
-    // if (connection) {
-    //   connection.write(message);
-    //   return;
-    // }
-
-    this.broadcast({
+    let envelope = new Message({
       mode: 0,
-      from: this.identity.address,
       command: 'relay',
       payload: message.getBuffer(),
       ttl,
     });
+
+    let connection = this.connections.find(connection => connection.peer.address === message.to);
+    if (connection) {
+      envelope.to = message.to;
+      return this.send(message);
+    }
+
+    this.broadcast(envelope);
   }
 
   broadcast (message, excludes = []) {
@@ -243,6 +254,10 @@ class Node extends EventEmitter {
     message.from = this.identity.address;
 
     this.connections.forEach(connection => {
+      if (excludes.indexOf(connection.peer.address) !== -1) {
+        return;
+      }
+
       let peerMessage = message.clone();
       peerMessage.to = connection.peer.address;
       peerMessage.encrypt(connection.peer);
@@ -261,7 +276,23 @@ class Node extends EventEmitter {
           return;
         }
 
+        let id = `${packet.from}:${packet.to}:${packet.seq}`;
+        let r = this._relayed.find(r => r === id);
+        if (r) {
+          return;
+        }
+
+        this._relayed.push(id);
+        if (this._relayed.length >= 10) {
+          this._relayed.shift();
+        }
+
         if (packet.to !== this.identity.address) {
+          let connection = this.connections.find(connection => connection.peer.address === packet.to);
+          if (connection) {
+            message.to = packet.to;
+            return this.send(message);
+          }
           return this.broadcast(message, [ message.from, packet.from ]);
         }
 

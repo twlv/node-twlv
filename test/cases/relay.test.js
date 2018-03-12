@@ -8,11 +8,16 @@ describe('Case: relay', () => {
   after(() => process.removeAllListeners('unhandledRejection'));
 
   it('send to using relay', async () => {
-    let gw = new Node();
+    let gw1 = new Node();
+    let gw2 = new Node();
     let node1 = new Node();
     let node2 = new Node();
 
-    gw.addListener(new MemoryListener());
+    gw1.addListener(new MemoryListener());
+    gw2.addListener(new MemoryListener());
+
+    gw1.addDialer(new MemoryDialer());
+    gw2.addDialer(new MemoryDialer());
     node1.addDialer(new MemoryDialer());
     node2.addDialer(new MemoryDialer());
 
@@ -20,12 +25,16 @@ describe('Case: relay', () => {
     node2.addFinder(new MemoryFinder());
 
     try {
-      await gw.start();
+      await gw1.start();
+      await gw2.start();
       await node1.start();
       await node2.start();
 
-      await node1.connect(`memory:${gw.identity.address}`);
-      await node2.connect(`memory:${gw.identity.address}`);
+      await gw1.connect(`memory:${gw2.identity.address}`);
+      await node1.connect(`memory:${gw1.identity.address}`);
+      await node2.connect(`memory:${gw1.identity.address}`);
+      await node1.connect(`memory:${gw2.identity.address}`);
+      await node2.connect(`memory:${gw2.identity.address}`);
 
       await new Promise(async (resolve, reject) => {
         try {
@@ -52,7 +61,8 @@ describe('Case: relay', () => {
         }
       });
     } finally {
-      await gw.stop();
+      await gw1.stop();
+      await gw2.stop();
       await node1.stop();
       await node2.stop();
     }
