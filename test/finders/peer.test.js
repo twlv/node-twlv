@@ -1,8 +1,7 @@
 const assert = require('assert');
 const { Node } = require('../../node');
-const MemoryListener = require('../../listeners/memory');
-const MemoryDialer = require('../../dialers/memory');
-const PeerFinder = require('../../finders/peer');
+const { MemoryListener, MemoryDialer } = require('../../transports/memory');
+const { PeerFinder } = require('../../finders/peer');
 
 describe('PeerFinder', () => {
   before(() => {

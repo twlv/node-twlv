@@ -1,18 +1,5 @@
-const net = require('net');
-const { URL } = require('url');
+let { TcpDialer } = require('../transports/tcp');
 
-class TcpDialer {
-  constructor () {
-    this.proto = 'tcp';
-  }
-
-  dial (url) {
-    return new Promise((resolve, reject) => {
-      let urlO = new URL(url);
-      let socket = net.connect(urlO.port, urlO.hostname, () => resolve(socket));
-      socket.on('error', reject);
-    });
-  }
-}
+console.warn('Deprecated, please use @xinix/xin/transport/tcp');
 
 module.exports = TcpDialer;

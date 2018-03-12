@@ -42,7 +42,7 @@ describe('Identity', () => {
       assert.equal(identity.address, ADDRESS);
       assert.equal(identity.pubKey, PUB_KEY);
       assert(!identity.isPrivate());
-      assert.throws(() => identity.privKey, 'Public key identity cant resolve private key');
+      assert(!identity.privKey);
     });
   });
 });

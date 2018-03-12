@@ -1,9 +1,8 @@
 const assert = require('assert');
-const TcpDialer = require('../../dialers/tcp');
-const TcpListener = require('../../listeners/tcp');
+const { TcpDialer, TcpListener } = require('../../transports/tcp');
 
-describe('Tcp', () => {
-  it('case: dialing and listening', async () => {
+describe('Transport: Tcp', () => {
+  it('dialing and listening', async () => {
     let listener = new TcpListener();
     let dialer = new TcpDialer();
 

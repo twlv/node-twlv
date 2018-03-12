@@ -2,6 +2,7 @@ const { EventEmitter } = require('events');
 const { Identity } = require('./identity');
 const { Connection } = require('./connection');
 const { Registry } = require('./registry');
+const { Message, MODE_SIGNED, MODE_ENCRYPTED } = require('./message');
 const assert = require('assert');
 
 class Node extends EventEmitter {
@@ -103,12 +104,11 @@ class Node extends EventEmitter {
       throw new Error(`No suitable dialer for ${url}`);
     }
 
-    return dialer.dial(url);
+    return dialer.dial(url, this);
   }
 
   async _connect (socket) {
-    let { identity, advertisement } = this;
-    let connection = new Connection({ identity, socket });
+    let connection = new Connection({ socket });
     connection.on('close', () => {
       let index = this.connections.indexOf(connection);
       if (index !== -1) {
@@ -116,20 +116,19 @@ class Node extends EventEmitter {
       }
     });
     try {
-      let peerAdv = await connection.handshake(advertisement);
-
+      let peer = await connection.handshake(this);
       // when connection to address already exist
-      let oldConnection = this.connections.find(connection => connection.peerIdentity.address === peerAdv.address);
+      let oldConnection = this.connections.find(connection => connection.peer.address === peer.address);
       if (oldConnection) {
         connection.destroy();
         connection = oldConnection;
       } else {
         this.connections.push(connection);
-        connection.on('data', this._onConnectionData.bind(this));
+        connection.on('data', this._onConnectionMessage.bind(this));
         this.emit('connection', connection);
       }
 
-      await this.registry.put(peerAdv);
+      await this.registry.put(peer);
       return connection;
     } catch (err) {
       connection.destroy();
@@ -137,22 +136,18 @@ class Node extends EventEmitter {
     }
   }
 
-  connect (url) {
+  async connect (url) {
     assert(this.running, 'Cannot connect on stopped node');
 
     if (url.includes(':')) {
-      return this._connectByUrl(url);
+      return this._connect(await this.dial(url));
     }
 
     return this._connectByAddress(url);
   }
 
-  async _connectByUrl (url) {
-    return this._connect(await this.dial(url));
-  }
-
   async _connectByAddress (address) {
-    let connection = this.connections.find(connection => connection.peerIdentity.address === address);
+    let connection = this.connections.find(connection => connection.peer.address === address);
     if (connection) {
       return connection;
     }
@@ -181,41 +176,109 @@ class Node extends EventEmitter {
     for (let url of urls) {
       try {
         let connection = await this.connect(url);
-        if (connection.peerIdentity.address !== peer.address) {
+        if (connection.peer.address !== peer.address) {
           connection.destroy();
           throw new Error('Connect to invalid peer address ' + peer.address);
         }
         return connection;
       } catch (err) {
+        console.error(err);
         this.emit('log:error', err);
       }
     }
   }
 
-  async send (to, message) {
+  async send (message) {
     assert(this.running, 'Cannot send on stopped node');
 
-    assert.notEqual(to, this.identity.address, 'Identity destination');
+    assert(message.to && message.to !== this.identity.address, 'Invalid to value');
 
-    let connection = await this.connect(to);
+    let connection = await this.connect(message.to);
+
+    message = Message.from(message);
+    message.from = this.identity.address;
+
+    message.encrypt(connection.peer);
+    message.sign(this.identity);
+
     connection.write(message);
   }
 
-  broadcast (message) {
-    assert(this.running, 'Cannot broadcast on stopped node');
+  async relay (message) {
+    assert(this.running, 'Cannot send on stopped node');
 
-    this.connections.forEach(connection => {
-      connection.write(message);
+    assert(message.to && message.to !== this.identity.address, 'Invalid to value');
+
+    let ttl = message.ttl > 1 ? message.ttl : 10;
+    message.ttl = 1;
+
+    message = Message.from(message);
+    message.from = this.identity.address;
+
+    let peer = await this.find(message.to);
+    assert(peer, 'Relay message needs peer to encrypt');
+
+    message.encrypt(peer);
+    message.sign(this.identity);
+
+    // let connection = this.connections.find(connection => connection.peer.address === message.to);
+    // if (connection) {
+    //   connection.write(message);
+    //   return;
+    // }
+
+    this.broadcast({
+      mode: 0,
+      from: this.identity.address,
+      command: 'relay',
+      payload: message.getBuffer(),
+      ttl,
     });
   }
 
-  _onConnectionData (data) {
-    if (data.to !== this.identity.address) {
-      console.warn('Invalid destination');
-      return;
-    }
+  broadcast (message, excludes = []) {
+    assert(this.running, 'Cannot broadcast on stopped node');
 
-    this.emit('message', data);
+    message = Message.from(message);
+    message.from = this.identity.address;
+
+    this.connections.forEach(connection => {
+      let peerMessage = message.clone();
+      peerMessage.to = connection.peer.address;
+      peerMessage.encrypt(connection.peer);
+      peerMessage.sign(this.identity);
+      connection.write(peerMessage);
+    });
+  }
+
+  async _onConnectionMessage (message) {
+    try {
+      message.decrypt(this.identity);
+
+      if (message.command === 'relay') {
+        let packet = Message.fromBuffer(message.payload);
+        if (packet.from === this.identity.address) {
+          return;
+        }
+
+        if (packet.to !== this.identity.address) {
+          return this.broadcast(message, [ message.from, packet.from ]);
+        }
+
+        let peer = await this.find(packet.from);
+        assert(peer, 'Relay message needs peer to verify');
+
+        packet.verify(peer);
+        packet.decrypt(this.identity);
+        packet.ttl--;
+
+        return this.emit('message', packet);
+      }
+
+      this.emit('message', message);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async _incomingSocket (socket) {

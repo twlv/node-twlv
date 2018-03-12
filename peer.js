@@ -1,7 +1,12 @@
-class Peer {
+const { Identity } = require('./identity');
+const assert = require('assert');
+
+class Peer extends Identity {
   constructor ({ address, pubKey, urls, timestamp }) {
-    this.address = address;
-    this.pubKey = pubKey;
+    super(pubKey);
+
+    assert.equal(address, this.address, 'Mismatch address');
+
     this.urls = urls;
     this.timestamp = new Date(timestamp);
   }

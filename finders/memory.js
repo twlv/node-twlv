@@ -32,4 +32,4 @@ class MemoryFinder {
   }
 }
 
-module.exports = MemoryFinder;
+module.exports = { MemoryFinder };

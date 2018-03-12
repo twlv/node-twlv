@@ -1,8 +1,7 @@
 const assert = require('assert');
-const { Node } = require('../node');
-const MemoryListener = require('../listeners/memory');
-const MemoryDialer = require('../dialers/memory');
-const MemoryFinder = require('../finders/memory');
+const { Node } = require('../..');
+const { MemoryListener, MemoryDialer } = require('../../transports/memory');
+const { MemoryFinder } = require('../../finders/memory');
 
 describe('cases', () => {
   before(() => {
@@ -115,8 +114,8 @@ describe('cases', () => {
 
         assert(connection);
         assert.equal(connection, node1.connections[0]);
-        assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
-        assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+        assert.equal(node1.connections[0].peer.address, node2.identity.address);
+        assert.equal(node2.connections[0].peer.address, node1.identity.address);
       } finally {
         await node1.stop();
         await node2.stop();
@@ -143,8 +142,8 @@ describe('cases', () => {
 
         assert(connection);
         assert.equal(connection, node1.connections[0]);
-        assert.equal(node1.connections[0].peerIdentity.address, node2.identity.address);
-        assert.equal(node2.connections[0].peerIdentity.address, node1.identity.address);
+        assert.equal(node1.connections[0].peer.address, node2.identity.address);
+        assert.equal(node2.connections[0].peer.address, node1.identity.address);
       } finally {
         await node1.stop();
         await node2.stop();
@@ -159,14 +158,15 @@ describe('cases', () => {
       await node.start();
 
       try {
-        await node.send(node.identity.address, {
+        await node.send({
+          to: node.identity.address,
           command: 'foo',
           payload: 'bar',
         });
 
         throw new Error('Oops');
       } catch (err) {
-        if (err.message !== 'Identity destination') {
+        if (err.message !== 'Invalid to value') {
           throw err;
         }
       }
@@ -201,7 +201,8 @@ describe('cases', () => {
             }
           });
 
-          await node1.send(node2.identity.address, {
+          await node1.send({
+            to: node2.identity.address,
             command: 'foo',
             payload: 'bar',
           });

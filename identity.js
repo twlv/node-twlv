@@ -10,20 +10,36 @@ class Identity {
   }
 
   constructor (key) {
-    this.key = key;
-    this.address = sha3256(this.pubKey).slice(-20);
-  }
+    Object.defineProperty(this, 'rsa', {
+      enumerable: false,
+      writable: false,
+      configurable: false,
+      value: new RSA(key),
+    });
 
-  get rsa () {
-    return new RSA(this.key);
-  }
+    if (this.rsa.isPrivate()) {
+      Object.defineProperty(this, 'privKey', {
+        enumerable: false,
+        writable: false,
+        configurable: false,
+        value: this.rsa.exportKey('private'),
+      });
+    }
 
-  get privKey () {
-    return this.rsa.exportKey('private');
-  }
+    let pubKey = this.rsa.exportKey('public');
+    Object.defineProperty(this, 'address', {
+      enumerable: true,
+      writable: false,
+      configurable: false,
+      value: sha3256(pubKey).slice(-20),
+    });
 
-  get pubKey () {
-    return this.rsa.exportKey('public');
+    Object.defineProperty(this, 'pubKey', {
+      enumerable: true,
+      writable: false,
+      configurable: false,
+      value: pubKey,
+    });
   }
 
   isPrivate () {

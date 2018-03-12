@@ -25,7 +25,11 @@ class PeerFinder {
           return;
         }
 
-        await this.node.send(message.from, { command: 'peerfinder.res', payload: JSON.stringify(peerInfo) });
+        await this.node.send({
+          to: message.from,
+          command: 'peerfinder.res',
+          payload: JSON.stringify(peerInfo),
+        });
       } else if (message.command === 'peerfinder.res') {
         let peerInfo = JSON.parse(message.payload);
         this.works = this.works.filter(work => {
@@ -56,4 +60,4 @@ class PeerFinder {
   }
 }
 
-module.exports = PeerFinder;
+module.exports = { PeerFinder };

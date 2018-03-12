@@ -1,8 +1,7 @@
 const assert = require('assert');
-const MemoryListener = require('../../listeners/memory');
-const MemoryDialer = require('../../dialers/memory');
+const { MemoryDialer, MemoryListener } = require('../../transports/memory');
 
-describe('Memory listener and dialer', () => {
+describe('Transport: Memory', () => {
   beforeEach(() => {
     MemoryListener.reset();
   });
