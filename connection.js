@@ -23,6 +23,7 @@ class Connection extends Readable {
       let unit = this._handshaking = new HandshakingUnit(this, node);
       this.peer = new Peer(await unit.run());
       this.decoder.on('readable', this._onReadable.bind(this));
+      this._onReadable();
       return this.peer;
     } finally {
       this._handshaking = undefined;
@@ -54,6 +55,8 @@ class Connection extends Readable {
     if (!this.socket) {
       return;
     }
+
+    this.decoder.removeAllListeners('readable');
 
     this.socket.end();
     this.encoder.end();
