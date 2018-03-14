@@ -3,7 +3,7 @@ const { Message } = require('../message');
 const { Identity } = require('../identity');
 
 describe('Message', () => {
-  it('construct with data', () => {
+  it.only('construct with data', () => {
     let identity1 = Identity.generate();
     let identity2 = Identity.generate();
 
@@ -15,7 +15,9 @@ describe('Message', () => {
 
     let message2 = Message.fromBuffer(buf);
 
+
     assert.equal(message2.mode, 3);
+    assert.equal(message2.seq, 10);
     assert.equal(message2.ttl, 1);
     assert.equal(message2.from, identity1.address);
     assert.equal(message2.to, identity2.address);

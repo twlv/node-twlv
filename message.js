@@ -148,7 +148,7 @@ class Message {
     let offset = 0;
     buf.writeUInt8(this.mode, offset++);
     buf.writeUInt8(this.ttl, offset++);
-    buf.writeUInt16LE(this.mode, offset);
+    buf.writeUInt16LE(this.seq, offset);
     offset += 2;
     buf.write(this.from, offset, 10, 'hex');
     offset += 10;

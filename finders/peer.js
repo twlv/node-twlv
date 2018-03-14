@@ -1,5 +1,5 @@
 class PeerFinder {
-  constructor (node) {
+  constructor () {
     this.name = 'peer';
 
     this._onNodeMessage = this._onNodeMessage.bind(this);
