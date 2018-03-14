@@ -1,3 +1,4 @@
+const debug = require('debug')('twlv:core:registry');
 const { Peer } = require('./peer');
 
 const TIMEOUT_FIND = 3000;
@@ -66,7 +67,7 @@ class Registry {
           clearTimeout(_t);
           _resolve(peerInfo);
         } catch (err) {
-          console.warn('Finder caught error', err);
+          debug(`Finder caught ${err}`);
         }
       }));
 

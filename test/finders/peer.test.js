@@ -4,13 +4,8 @@ const { MemoryListener, MemoryDialer } = require('../../transports/memory');
 const { PeerFinder } = require('../../finders/peer');
 
 describe('PeerFinder', () => {
-  before(() => {
-    process.on('unhandledRejection', err => console.error('Unhandled rejection', err));
-  });
-
-  after(() => {
-    process.removeAllListeners('unhandledRejection');
-  });
+  before(() => process.on('unhandledRejection', err => console.error('Unhandled', err)));
+  after(() => process.removeAllListeners('unhandledRejection'));
 
   it('get peer info from connected peer', async () => {
     let node1 = new Node();

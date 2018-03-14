@@ -4,15 +4,8 @@ const { MemoryListener, MemoryDialer } = require('../../transports/memory');
 const { MemoryFinder } = require('../../finders/memory');
 
 describe('cases', () => {
-  before(() => {
-    process.on('unhandledRejection', err => {
-      console.error('unhandledRejection', err);
-    });
-  });
-
-  after(() => {
-    process.removeAllListeners('unhandledRejection');
-  });
+  before(() => process.on('unhandledRejection', err => console.error('Unhandled', err)));
+  after(() => process.removeAllListeners('unhandledRejection'));
 
   beforeEach(() => {
     MemoryListener.reset();

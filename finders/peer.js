@@ -1,3 +1,5 @@
+const debug = require('debug')('twlv:core:finders:peer');
+
 class PeerFinder {
   constructor () {
     this.name = 'peer';
@@ -40,7 +42,7 @@ class PeerFinder {
         });
       }
     } catch (err) {
-      console.warn('PeerFinder caught error', err);
+      debug(`PeerFinder caught ${err}`);
     }
   }
 

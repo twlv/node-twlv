@@ -4,6 +4,7 @@ const { Connection } = require('./connection');
 const { Registry } = require('./registry');
 const { Message } = require('./message');
 const assert = require('assert');
+const debug = require('debug')('twlv:core:node');
 
 class Node extends EventEmitter {
   constructor ({ networkId = '', identity } = {}) {
@@ -186,8 +187,7 @@ class Node extends EventEmitter {
         }
         return connection;
       } catch (err) {
-        console.error(err);
-        this.emit('log:error', err);
+        debug(`_connectByPeer caught ${err}`);
       }
     }
   }
@@ -308,7 +308,7 @@ class Node extends EventEmitter {
 
       this.emit('message', message);
     } catch (err) {
-      console.error(err);
+      debug(`_onConnectionMessage caught ${err}`);
     }
   }
 
@@ -316,7 +316,7 @@ class Node extends EventEmitter {
     try {
       await this._connect(socket);
     } catch (err) {
-      this.emit('log:error', err);
+      debug(`_incomingSocket caught ${err}`);
     }
   }
 }
