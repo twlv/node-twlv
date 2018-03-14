@@ -3,7 +3,7 @@ const { Message } = require('../message');
 const { Identity } = require('../identity');
 
 describe('Message', () => {
-  it.only('construct with data', () => {
+  it('construct with data', () => {
     let identity1 = Identity.generate();
     let identity2 = Identity.generate();
 

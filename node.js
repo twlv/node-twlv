@@ -7,7 +7,7 @@ const assert = require('assert');
 const debug = require('debug')('twlv:core:node');
 
 class Node extends EventEmitter {
-  constructor ({ networkId = '', identity } = {}) {
+  constructor ({ networkId = 'twlv', identity } = {}) {
     super();
 
     this.networkId = networkId;
@@ -15,7 +15,7 @@ class Node extends EventEmitter {
     this.running = false;
     this.listeners = [];
     this.dialers = [];
-    this.registry = new Registry();
+    this.registry = new Registry(networkId);
     this.connections = [];
     this._relayed = [];
     this._seq = -1;

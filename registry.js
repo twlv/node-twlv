@@ -4,7 +4,8 @@ const { Peer } = require('./peer');
 const TIMEOUT_FIND = 3000;
 
 class Registry {
-  constructor () {
+  constructor (networkId) {
+    this.networkId = networkId;
     this.finders = [];
     this.peers = [];
     this.tasks = [];
@@ -61,6 +62,10 @@ class Registry {
         try {
           let peerInfo = await finder.find(address);
           if (!peerInfo) {
+            return;
+          }
+
+          if (peerInfo.networkId !== this.networkId) {
             return;
           }
 
