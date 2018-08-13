@@ -5,7 +5,7 @@ class MemoryFinder {
     nodes.splice(0);
   }
 
-  constructor (node) {
+  constructor () {
     this.name = 'memory';
   }
 

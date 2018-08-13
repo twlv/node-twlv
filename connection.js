@@ -1,12 +1,12 @@
 const lpstream = require('length-prefixed-stream');
 const { Peer } = require('./peer');
-const { Readable } = require('stream');
+const { Duplex } = require('stream');
 const { Message, MODE_SIGNED, MODE_ENCRYPTED } = require('./message');
 const assert = require('assert');
 
-class Connection extends Readable {
+class Connection extends Duplex {
   constructor ({ socket }) {
-    super({ objectMode: true });
+    super({ objectMode: true, emitClose: false });
 
     this.socket = socket;
 
@@ -16,7 +16,7 @@ class Connection extends Readable {
     this.encoder.pipe(socket).pipe(this.decoder);
 
     // event close better then end
-    // socket.on('end', this._onSocketEnd.bind(this));
+    socket.on('end', this._onSocketClose.bind(this));
     socket.on('close', this._onSocketClose.bind(this));
   }
 
@@ -47,32 +47,13 @@ class Connection extends Readable {
     }
   }
 
-  write (message) {
+  _write (message, encoding, cb) {
     assert(message instanceof Message, 'Message must be instanceof Message');
-
     this.encoder.write(message.getBuffer());
+    cb();
   }
 
-  // end () {
-  //   if (!this.socket) {
-  //     return;
-  //   }
-
-  //   this.decoder.removeAllListeners('readable');
-
-  //   this.socket.end();
-  //   this.encoder.end();
-  //   this.decoder.end();
-  // }
-
-  // _onSocketEnd () {
-  //   console.log('socket end', this.socket.constructor.name)
-  //   // this.peer = undefined;
-  //   this.destroy();
-  // }
-
   _onSocketClose () {
-    // this.peer = undefined;
     this.destroy();
   }
 
@@ -84,6 +65,8 @@ class Connection extends Readable {
     this.socket.destroy();
     this.encoder.destroy();
     this.decoder.destroy();
+
+    this.emit('close');
 
     callback(err);
   }
