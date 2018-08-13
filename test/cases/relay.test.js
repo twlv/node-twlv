@@ -44,7 +44,7 @@ describe('Case: relay', () => {
             }
 
             try {
-              assert.equal(message.payload.toString(), 'baz');
+              assert.strictEqual(message.payload.toString(), 'baz');
               resolve(message);
             } catch (err) {
               reject(err);

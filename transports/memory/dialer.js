@@ -38,6 +38,11 @@ class MemorySocket extends Duplex {
   _read () {
     // do nothing
   }
+
+  _destroy (err, cb) {
+    this.peer.destroy(err);
+    cb(err);
+  }
 }
 
 module.exports = { MemoryDialer };

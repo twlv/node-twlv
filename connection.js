@@ -15,7 +15,9 @@ class Connection extends Readable {
 
     this.encoder.pipe(socket).pipe(this.decoder);
 
-    socket.on('end', this._onSocketEnd.bind(this));
+    // event close better then end
+    // socket.on('end', this._onSocketEnd.bind(this));
+    socket.on('close', this._onSocketClose.bind(this));
   }
 
   async handshake (node) {
@@ -51,19 +53,25 @@ class Connection extends Readable {
     this.encoder.write(message.getBuffer());
   }
 
-  end () {
-    if (!this.socket) {
-      return;
-    }
+  // end () {
+  //   if (!this.socket) {
+  //     return;
+  //   }
 
-    this.decoder.removeAllListeners('readable');
+  //   this.decoder.removeAllListeners('readable');
 
-    this.socket.end();
-    this.encoder.end();
-    this.decoder.end();
-  }
+  //   this.socket.end();
+  //   this.encoder.end();
+  //   this.decoder.end();
+  // }
 
-  _onSocketEnd () {
+  // _onSocketEnd () {
+  //   console.log('socket end', this.socket.constructor.name)
+  //   // this.peer = undefined;
+  //   this.destroy();
+  // }
+
+  _onSocketClose () {
     // this.peer = undefined;
     this.destroy();
   }
@@ -77,7 +85,6 @@ class Connection extends Readable {
     this.encoder.destroy();
     this.decoder.destroy();
 
-    this.emit('close');
     callback(err);
   }
 }

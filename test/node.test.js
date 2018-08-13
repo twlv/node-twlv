@@ -11,7 +11,7 @@ describe('Node', () => {
     it('create new node with supplied identity', () => {
       let identity = Identity.generate();
       let node = new Node({ identity });
-      assert.equal(node.identity, identity);
+      assert.strictEqual(node.identity, identity);
     });
   });
 
@@ -23,7 +23,7 @@ describe('Node', () => {
       };
       let node = new Node();
       node.addListener(listenerMock);
-      assert.equal(node.listeners[0], listenerMock);
+      assert.strictEqual(node.listeners[0], listenerMock);
     });
   });
 
@@ -32,7 +32,7 @@ describe('Node', () => {
       let dialerMock = {};
       let node = new Node();
       node.addDialer(dialerMock);
-      assert.equal(node.dialers[0], dialerMock);
+      assert.strictEqual(node.dialers[0], dialerMock);
     });
   });
 
@@ -66,8 +66,8 @@ describe('Node', () => {
         await node.dial(`foo:1`);
         await node.dial(`bar:2`);
 
-        assert.equal(fooDialer.dialedUrl, 'foo:1');
-        assert.equal(barDialer.dialedUrl, 'bar:2');
+        assert.strictEqual(fooDialer.dialedUrl, 'foo:1');
+        assert.strictEqual(barDialer.dialedUrl, 'bar:2');
       } finally {
         await node.stop();
       }
@@ -105,10 +105,10 @@ describe('Node', () => {
         await node.start();
 
         let advertisement = node.advertisement;
-        assert.equal(advertisement.address, node.identity.address);
-        assert.equal(advertisement.pubKey, node.identity.pubKey);
-        assert.equal(advertisement.urls[0], 'foo:1');
-        assert.equal(advertisement.urls[1], 'bar:1');
+        assert.strictEqual(advertisement.address, node.identity.address);
+        assert.strictEqual(advertisement.pubKey, node.identity.pubKey);
+        assert.strictEqual(advertisement.urls[0], 'foo:1');
+        assert.strictEqual(advertisement.urls[1], 'bar:1');
       } finally {
         await node.stop();
       }

@@ -15,15 +15,14 @@ describe('Message', () => {
 
     let message2 = Message.fromBuffer(buf);
 
-
-    assert.equal(message2.mode, 3);
-    assert.equal(message2.seq, 10);
-    assert.equal(message2.ttl, 1);
-    assert.equal(message2.from, identity1.address);
-    assert.equal(message2.to, identity2.address);
+    assert.strictEqual(message2.mode, 3);
+    assert.strictEqual(message2.seq, 10);
+    assert.strictEqual(message2.ttl, 1);
+    assert.strictEqual(message2.from, identity1.address);
+    assert.strictEqual(message2.to, identity2.address);
     message2.decrypt(identity2);
     message2.verify(identity1);
 
-    assert.equal(message2.payload.toString('hex'), message.payload.toString('hex'));
+    assert.strictEqual(message2.payload.toString('hex'), message.payload.toString('hex'));
   });
 });

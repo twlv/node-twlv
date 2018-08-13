@@ -30,17 +30,17 @@ describe('Identity', () => {
     it('create new identity by its private key', () => {
       let identity = new Identity(PRIV_KEY);
 
-      assert.equal(identity.address, ADDRESS);
-      assert.equal(identity.privKey, PRIV_KEY);
-      assert.equal(identity.pubKey, PUB_KEY);
+      assert.strictEqual(identity.address, ADDRESS);
+      assert.strictEqual(identity.privKey, PRIV_KEY);
+      assert.strictEqual(identity.pubKey, PUB_KEY);
       assert(identity.isPrivate());
     });
 
     it('create new identity by its public key', () => {
       let identity = new Identity(PUB_KEY);
 
-      assert.equal(identity.address, ADDRESS);
-      assert.equal(identity.pubKey, PUB_KEY);
+      assert.strictEqual(identity.address, ADDRESS);
+      assert.strictEqual(identity.pubKey, PUB_KEY);
       assert(!identity.isPrivate());
       assert(!identity.privKey);
     });

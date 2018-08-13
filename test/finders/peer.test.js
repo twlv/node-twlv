@@ -29,7 +29,7 @@ describe('PeerFinder', () => {
 
     let peer = await node2.find(node3.identity.address);
     assert(peer);
-    assert.equal(peer.address, node3.identity.address);
-    assert.equal(peer.pubKey, node3.identity.pubKey);
+    assert.strictEqual(peer.address, node3.identity.address);
+    assert.strictEqual(peer.pubKey, node3.identity.pubKey);
   });
 });

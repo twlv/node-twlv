@@ -5,7 +5,7 @@ class Peer extends Identity {
   constructor ({ networkId, address, pubKey, urls, timestamp }) {
     super(pubKey);
 
-    assert.equal(address, this.address, 'Mismatch address');
+    assert.strictEqual(address, this.address, 'Mismatch address');
 
     this.networkId = networkId;
     this.urls = urls;

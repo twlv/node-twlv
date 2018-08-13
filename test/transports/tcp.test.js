@@ -45,8 +45,8 @@ describe('Transport: Tcp', () => {
 
       await Promise.all([listenerDataReady, dialerDataReady]);
 
-      assert.equal(listenerData, 'foo');
-      assert.equal(dialerData, 'bar');
+      assert.strictEqual(listenerData, 'foo');
+      assert.strictEqual(dialerData, 'bar');
     } finally {
       await listener.down();
     }

@@ -11,7 +11,7 @@ describe('Memory Finder', () => {
       await finder2.up({ identity: { address: '2' }, advertisement: { address: '2' } });
 
       let node = await finder1.find('2');
-      assert.equal(node.address, '2');
+      assert.strictEqual(node.address, '2');
     } finally {
       await finder1.down();
       await finder2.down();
