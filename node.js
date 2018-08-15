@@ -16,8 +16,6 @@ class Node extends EventEmitter {
     this.dialers = [];
     this.registry = new Registry(networkId);
     this.connections = [];
-    this._relayed = [];
-    this._seq = -1;
   }
 
   get advertisement () {
@@ -233,51 +231,6 @@ class Node extends EventEmitter {
     connection.write(message);
   }
 
-  nextSeq () {
-    this._seq = ++this._seq & 0xffff;
-    return this._seq;
-  }
-
-  async relay (message) {
-    if (!this.running) {
-      throw new Error('Cannot send on stopped node');
-    }
-
-    if (!message.to || message.to === this.identity.address) {
-      throw new Error('Invalid to value');
-    }
-
-    let ttl = message.ttl > 1 ? message.ttl : 10;
-    message.ttl = 1;
-
-    message = Message.from(message);
-    message.from = this.identity.address;
-    message.seq = this.nextSeq();
-
-    let peer = await this.find(message.to);
-    if (!peer) {
-      throw new Error('Relay message needs peer to encrypt');
-    }
-
-    message.encrypt(peer);
-    message.sign(this.identity);
-
-    let envelope = new Message({
-      mode: 0,
-      command: 'relay',
-      payload: message.getBuffer(),
-      ttl,
-    });
-
-    let connection = this.connections.find(connection => connection.peer.address === message.to);
-    if (connection) {
-      envelope.to = message.to;
-      return this.send(message);
-    }
-
-    this.broadcast(envelope);
-  }
-
   broadcast (message, excludes = []) {
     if (!this.running) {
       throw new Error('Cannot broadcast on stopped node');
@@ -299,47 +252,9 @@ class Node extends EventEmitter {
     });
   }
 
-  async _onConnectionMessage (message) {
+  _onConnectionMessage (message) {
     try {
       message.decrypt(this.identity);
-
-      if (message.command === 'relay') {
-        let packet = Message.fromBuffer(message.payload);
-        if (packet.from === this.identity.address) {
-          return;
-        }
-
-        let id = `${packet.from}:${packet.to}:${packet.seq}`;
-        let r = this._relayed.find(r => r === id);
-        if (r) {
-          return;
-        }
-
-        this._relayed.push(id);
-        if (this._relayed.length >= 10) {
-          this._relayed.shift();
-        }
-
-        if (packet.to !== this.identity.address) {
-          let connection = this.connections.find(connection => connection.peer.address === packet.to);
-          if (connection) {
-            message.to = packet.to;
-            return this.send(message);
-          }
-          return this.broadcast(message, [ message.from, packet.from ]);
-        }
-
-        let peer = await this.find(packet.from);
-        if (!peer) {
-          throw new Error('Relay message needs peer to verify');
-        }
-
-        packet.verify(peer);
-        packet.decrypt(this.identity);
-        packet.ttl--;
-
-        return this.emit('message', packet);
-      }
 
       this.emit('message', message);
     } catch (err) {
