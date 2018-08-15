@@ -55,7 +55,7 @@ class Registry {
         resolve(val);
       };
 
-      let _t = setTimeout(() => _reject(new Error('Find timeout')), timeout);
+      let _t = setTimeout(() => _reject(new Error(`Find timeout, address: ${address}`)), timeout);
 
       // TODO: potentially leaked promise still running while node stopped
       await Promise.all(this.finders.map(async finder => {
@@ -77,7 +77,7 @@ class Registry {
       }));
 
       clearTimeout(_t);
-      _reject(new Error('Peer not found'));
+      _reject(new Error(`Peer not found, address: ${address}`));
     });
 
     return this.put(peerInfo);

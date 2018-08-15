@@ -1,6 +1,5 @@
 const { getListener } = require('./listener').MemoryListener;
 const { Duplex } = require('stream');
-const assert = require('assert');
 
 class MemoryDialer {
   constructor () {
@@ -12,7 +11,9 @@ class MemoryDialer {
     let address = url.split(':').pop();
     let listener = getListener(address);
 
-    assert(listener, `Error dialing ${url}`);
+    if (!listener) {
+      throw new Error(`Error dialing ${url}`);
+    }
 
     listener._incoming(new MemorySocket(socket));
 

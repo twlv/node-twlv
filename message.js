@@ -1,5 +1,3 @@
-const assert = require('assert');
-
 const MODE_PLAIN = 0;
 const MODE_ENCRYPTED = 1;
 const MODE_SIGNED = 2;
@@ -84,7 +82,9 @@ class Message {
       return;
     }
 
-    assert(identity && identity.address === this.from, 'Invalid identity to sign with');
+    if (!identity || identity.address !== this.from) {
+      throw new Error('Invalid identity to sign with');
+    }
 
     let payload = this.hasEncryptFlag() ? this.encrypted : this.payload;
     this.signature = identity.sign(payload);
@@ -97,7 +97,9 @@ class Message {
       return;
     }
 
-    assert(identity && identity.address === this.from, 'Invalid identity to verify with');
+    if (!identity || identity.address !== this.from) {
+      throw new Error('Invalid identity to verify with');
+    }
 
     let payload = this.hasEncryptFlag() ? this.encrypted : this.payload;
     if (!identity.verify(payload, this.signature)) {
@@ -112,7 +114,9 @@ class Message {
       return;
     }
 
-    assert(identity && identity.address === this.to, 'Invalid identity to encrypt with');
+    if (!identity || identity.address !== this.to) {
+      throw new Error('Invalid identity to encrypt with');
+    }
 
     this.encrypted = identity.encrypt(this.payload);
 
@@ -124,7 +128,9 @@ class Message {
       return;
     }
 
-    assert(identity && identity.address === this.to, 'Invalid identity to decrypt with');
+    if (!identity || identity.address !== this.to) {
+      throw new Error('Invalid identity to decrypt with');
+    }
 
     this.payload = identity.decrypt(this.encrypted);
 
@@ -132,7 +138,9 @@ class Message {
   }
 
   getBuffer () {
-    assert(this.from, 'Unset from');
+    if (!this.from) {
+      throw new Error('Message from value is required');
+    }
 
     if (this.hasSignFlag() && this.signature.length === 0) {
       throw new Error('Invalid signature');

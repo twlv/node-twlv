@@ -2,7 +2,6 @@ const lpstream = require('length-prefixed-stream');
 const { Peer } = require('./peer');
 const { Duplex } = require('stream');
 const { Message, MODE_SIGNED, MODE_ENCRYPTED } = require('./message');
-const assert = require('assert');
 
 class Connection extends Duplex {
   constructor ({ socket }) {
@@ -48,7 +47,10 @@ class Connection extends Duplex {
   }
 
   _write (message, encoding, cb) {
-    assert(message instanceof Message, 'Message must be instanceof Message');
+    if (message instanceof Message === false) {
+      throw new Error('Message must be instanceof Message');
+    }
+
     this.encoder.write(message.getBuffer());
     cb();
   }

@@ -1,4 +1,3 @@
-const assert = require('assert');
 const { EventEmitter } = require('events');
 
 const listeners = [];
@@ -38,7 +37,9 @@ class MemoryListener extends EventEmitter {
   }
 
   _incoming (socket) {
-    assert(this.node, 'Cannot bind down peer');
+    if (!this.node) {
+      throw new Error('Cannot bind down peer');
+    }
 
     this.emit('socket', socket);
   }

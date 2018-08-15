@@ -47,7 +47,7 @@ describe('cases', () => {
         await node1.find('foo');
         throw new Error('Oops');
       } catch (err) {
-        if (err.message !== 'Peer not found') {
+        if (!err.message.match(/^Peer not found/)) {
           throw err;
         }
       } finally {
@@ -79,7 +79,7 @@ describe('cases', () => {
         await node1.find('foo', { timeout: 100 });
         throw new Error('Oops');
       } catch (err) {
-        if (err.message !== 'Find timeout') {
+        if (!err.message.match(/^Find timeout/)) {
           throw err;
         }
       } finally {

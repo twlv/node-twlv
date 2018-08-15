@@ -3,7 +3,6 @@ const { Identity } = require('./identity');
 const { Connection } = require('./connection');
 const { Registry } = require('./registry');
 const { Message } = require('./message');
-const assert = require('assert');
 const debug = require('debug')('twlv:core:node');
 
 class Node extends EventEmitter {
@@ -38,44 +37,58 @@ class Node extends EventEmitter {
   }
 
   async generate () {
-    assert(!this.running, 'Cannot generate identity on running node');
+    if (this.running) {
+      throw new Error('Cannot generate identity on running node');
+    }
 
     this.identity = await Identity.generate();
   }
 
   authenticate (identity) {
-    assert(!this.running, 'Cannot authenticate on running node');
+    if (this.running) {
+      throw new Error('Cannot authenticate on running node');
+    }
 
     this.identity = identity;
   }
 
   deauthenticate () {
-    assert(!this.running, 'Cannot deauthenticate on running node');
+    if (this.running) {
+      throw new Error('Cannot deauthenticate on running node');
+    }
 
     this.identity = null;
   }
 
   addListener (listener) {
-    assert(!this.running, 'Cannot add listener on running node');
+    if (this.running) {
+      throw new Error('Cannot add listener on running node');
+    }
 
     listener.on('socket', this._incomingSocket.bind(this));
     this.listeners.push(listener);
   }
 
   addDialer (dialer) {
-    assert(!this.running, 'Cannot add dialer on running node');
+    if (this.running) {
+      throw new Error('Cannot add dialer on running node');
+    }
 
     this.dialers.push(dialer);
   }
 
   addFinder (finder) {
-    assert(!this.running, 'Cannot add finder on running node');
+    if (this.running) {
+      throw new Error('Cannot add finder on running node');
+    }
 
     this.registry.addFinder(finder);
   }
 
   async start () {
-    assert(!this.running, 'Cannot start already running node');
+    if (this.running) {
+      throw new Error('Cannot start already running node');
+    }
 
     this.running = true;
     this.connections = [];
@@ -85,7 +98,9 @@ class Node extends EventEmitter {
   }
 
   async stop () {
-    assert(this.running, 'Cannot stop stopped node');
+    if (!this.running) {
+      throw new Error('Cannot stop stopped node');
+    }
 
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
@@ -95,13 +110,17 @@ class Node extends EventEmitter {
   }
 
   find (address, options) {
-    assert(this.running, 'Cannot find on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot find on stopped node');
+    }
 
     return this.registry.find(address, options);
   }
 
   dial (url) {
-    assert(this.running, 'Cannot dial on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot dial on stopped node');
+    }
 
     let [ proto ] = url.split(':');
     let dialer = this.dialers.find(dialer => dialer.proto === proto);
@@ -142,7 +161,9 @@ class Node extends EventEmitter {
   }
 
   async connect (url) {
-    assert(this.running, 'Cannot connect on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot connect on stopped node');
+    }
 
     if (url.includes(':')) {
       return this._connect(await this.dial(url));
@@ -193,9 +214,13 @@ class Node extends EventEmitter {
   }
 
   async send (message) {
-    assert(this.running, 'Cannot send on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot send on stopped node');
+    }
 
-    assert(message.to && message.to !== this.identity.address, 'Invalid to value');
+    if (!message.to || message.to === this.identity.address) {
+      throw new Error('Invalid to value');
+    }
 
     let connection = await this.connect(message.to);
 
@@ -214,9 +239,13 @@ class Node extends EventEmitter {
   }
 
   async relay (message) {
-    assert(this.running, 'Cannot send on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot send on stopped node');
+    }
 
-    assert(message.to && message.to !== this.identity.address, 'Invalid to value');
+    if (!message.to || message.to === this.identity.address) {
+      throw new Error('Invalid to value');
+    }
 
     let ttl = message.ttl > 1 ? message.ttl : 10;
     message.ttl = 1;
@@ -226,7 +255,9 @@ class Node extends EventEmitter {
     message.seq = this.nextSeq();
 
     let peer = await this.find(message.to);
-    assert(peer, 'Relay message needs peer to encrypt');
+    if (!peer) {
+      throw new Error('Relay message needs peer to encrypt');
+    }
 
     message.encrypt(peer);
     message.sign(this.identity);
@@ -248,7 +279,9 @@ class Node extends EventEmitter {
   }
 
   broadcast (message, excludes = []) {
-    assert(this.running, 'Cannot broadcast on stopped node');
+    if (!this.running) {
+      throw new Error('Cannot broadcast on stopped node');
+    }
 
     message = Message.from(message);
     message.from = this.identity.address;
@@ -297,7 +330,9 @@ class Node extends EventEmitter {
         }
 
         let peer = await this.find(packet.from);
-        assert(peer, 'Relay message needs peer to verify');
+        if (!peer) {
+          throw new Error('Relay message needs peer to verify');
+        }
 
         packet.verify(peer);
         packet.decrypt(this.identity);
@@ -308,7 +343,7 @@ class Node extends EventEmitter {
 
       this.emit('message', message);
     } catch (err) {
-      debug(`_onConnectionMessage caught ${err}`);
+      debug(`Node#_onConnectionMessage caught: ${err.stack}`);
     }
   }
 
