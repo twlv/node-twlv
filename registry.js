@@ -72,7 +72,7 @@ class Registry {
           clearTimeout(_t);
           _resolve(peerInfo);
         } catch (err) {
-          debug(`Finder caught ${err}`);
+          debug(`Finder caught: ${err.stack}`);
         }
       }));
 

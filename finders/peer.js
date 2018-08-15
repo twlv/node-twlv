@@ -42,7 +42,7 @@ class PeerFinder {
         });
       }
     } catch (err) {
-      debug(`PeerFinder caught ${err}`);
+      debug(`PeerFinder caught: ${err.stack}`);
     }
   }
 

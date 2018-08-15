@@ -206,7 +206,7 @@ class Node extends EventEmitter {
         }
         return connection;
       } catch (err) {
-        debug(`_connectByPeer caught ${err}`);
+        debug(`Node#_connectByPeer caught: ${err.stack}`);
       }
     }
   }
@@ -266,7 +266,7 @@ class Node extends EventEmitter {
     try {
       await this._connect(socket);
     } catch (err) {
-      debug(`_incomingSocket caught ${err}`);
+      debug(`Node#_incomingSocket caught: ${err.stack}`);
     }
   }
 }
