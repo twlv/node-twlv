@@ -10,7 +10,6 @@ class Message {
   static fromBuffer (buf) {
     let offset = 0;
     let mode = buf.readInt8(offset++);
-    let ttl = buf.readUInt8(offset++);
 
     let from = buf.toString('hex', offset, offset + 10);
     offset += 10;
@@ -28,7 +27,6 @@ class Message {
 
     let message = new Message({
       mode,
-      ttl,
       from,
       to,
       command,
@@ -50,14 +48,12 @@ class Message {
     to = '',
     command = '',
     payload = Buffer.alloc(0),
-    ttl = 1,
     signature = Buffer.alloc(0),
     encrypted = Buffer.alloc(0),
   } = {}) {
     this.mode = mode;
     this.from = from;
     this.to = to;
-    this.ttl = ttl;
     this.command = command;
     this.payload = toBuffer(payload);
     this.signature = toBuffer(signature);
@@ -147,10 +143,9 @@ class Message {
 
     let payload = this.hasEncryptFlag() ? this.encrypted : this.payload;
     let commandBuf = getLengthPrefixed(this.command);
-    let buf = Buffer.alloc(86 + commandBuf.length + payload.length);
+    let buf = Buffer.alloc(85 + commandBuf.length + payload.length);
     let offset = 0;
     buf.writeUInt8(this.mode, offset++);
-    buf.writeUInt8(this.ttl, offset++);
     buf.write(this.from, offset, 10, 'hex');
     offset += 10;
     if (this.to) {

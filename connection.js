@@ -38,12 +38,6 @@ class Connection extends Duplex {
     let frame;
     while ((frame = this.decoder.read())) {
       let message = Message.fromBuffer(frame);
-
-      message.ttl--;
-      if (message.ttl < 0) {
-        return;
-      }
-
       message.verify(this.peer);
       this.push(message);
     }

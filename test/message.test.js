@@ -16,7 +16,6 @@ describe('Message', () => {
     let message2 = Message.fromBuffer(buf);
 
     assert.strictEqual(message2.mode, 3);
-    assert.strictEqual(message2.ttl, 1);
     assert.strictEqual(message2.from, identity1.address);
     assert.strictEqual(message2.to, identity2.address);
     message2.decrypt(identity2);
