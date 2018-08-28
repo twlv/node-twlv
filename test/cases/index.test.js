@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { Node } = require('../..');
-const { MemoryListener, MemoryDialer } = require('../../transports/memory');
+const { MemoryReceiver, MemoryDialer } = require('../../transports/memory');
 const { MemoryFinder } = require('../../finders/memory');
 
 describe('cases', () => {
@@ -8,7 +8,7 @@ describe('cases', () => {
   after(() => process.removeAllListeners('unhandledRejection'));
 
   beforeEach(() => {
-    MemoryListener.reset();
+    MemoryReceiver.reset();
     MemoryFinder.reset();
   });
 
@@ -18,10 +18,10 @@ describe('cases', () => {
       let node2 = new Node();
 
       try {
-        node1.addListener(new MemoryListener());
+        node1.addReceiver(new MemoryReceiver());
         node1.addFinder(new MemoryFinder());
 
-        node2.addListener(new MemoryListener());
+        node2.addReceiver(new MemoryReceiver());
         node2.addFinder(new MemoryFinder());
 
         await node1.start();
@@ -93,10 +93,10 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener());
+      node1.addReceiver(new MemoryReceiver());
       node1.addDialer(new MemoryDialer());
 
-      node2.addListener(new MemoryListener());
+      node2.addReceiver(new MemoryReceiver());
       node2.addDialer(new MemoryDialer());
 
       try {
@@ -119,11 +119,11 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener());
+      node1.addReceiver(new MemoryReceiver());
       node1.addDialer(new MemoryDialer());
       node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener());
+      node2.addReceiver(new MemoryReceiver());
       node2.addDialer(new MemoryDialer());
       node2.addFinder(new MemoryFinder());
 
@@ -169,11 +169,11 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener());
+      node1.addReceiver(new MemoryReceiver());
       node1.addDialer(new MemoryDialer());
       node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener());
+      node2.addReceiver(new MemoryReceiver());
       node2.addDialer(new MemoryDialer());
       node2.addFinder(new MemoryFinder());
 
@@ -209,11 +209,11 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addListener(new MemoryListener());
+      node1.addReceiver(new MemoryReceiver());
       node1.addDialer(new MemoryDialer());
       node1.addFinder(new MemoryFinder());
 
-      node2.addListener(new MemoryListener());
+      node2.addReceiver(new MemoryReceiver());
       node2.addDialer(new MemoryDialer());
       node2.addFinder(new MemoryFinder());
 
@@ -253,10 +253,10 @@ describe('cases', () => {
       let node2 = new Node();
 
       try {
-        node1.addListener(new MemoryListener());
+        node1.addReceiver(new MemoryReceiver());
         node1.addDialer(new MemoryDialer());
 
-        node2.addListener(new MemoryListener());
+        node2.addReceiver(new MemoryReceiver());
         node2.addDialer(new MemoryDialer());
 
         await node1.start();

@@ -1,4 +1,4 @@
 const { TcpDialer } = require('./dialer');
-const { TcpListener } = require('./listener');
+const { TcpReceiver } = require('./receiver');
 
-module.exports = { TcpDialer, TcpListener };
+module.exports = { TcpDialer, TcpReceiver };

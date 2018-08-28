@@ -1,4 +1,4 @@
-const { getListener } = require('./listener').MemoryListener;
+const { getReceiver } = require('./receiver').MemoryReceiver;
 const { Duplex } = require('stream');
 
 class MemoryDialer {
@@ -6,16 +6,24 @@ class MemoryDialer {
     this.proto = 'memory';
   }
 
+  up () {
+    // noop
+  }
+
+  down () {
+    // noop
+  }
+
   dial (url) {
     let socket = new MemorySocket();
     let address = url.split(':').pop();
-    let listener = getListener(address);
+    let receiver = getReceiver(address);
 
-    if (!listener) {
+    if (!receiver) {
       throw new Error(`Error dialing ${url}`);
     }
 
-    listener._incoming(new MemorySocket(socket));
+    receiver._incoming(new MemorySocket(socket));
 
     return socket;
   }

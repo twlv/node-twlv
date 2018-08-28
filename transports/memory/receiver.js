@@ -1,14 +1,14 @@
 const { EventEmitter } = require('events');
 
-const listeners = [];
+const receivers = [];
 
-class MemoryListener extends EventEmitter {
-  static getListener (address) {
-    return listeners.find(listener => listener.node.identity.address === address);
+class MemoryReceiver extends EventEmitter {
+  static getReceiver (address) {
+    return receivers.find(receiver => receiver.node.identity.address === address);
   }
 
   static reset () {
-    listeners.splice(0);
+    receivers.splice(0);
   }
 
   constructor () {
@@ -24,13 +24,13 @@ class MemoryListener extends EventEmitter {
   up (node) {
     this.node = node;
 
-    listeners.push(this);
+    receivers.push(this);
   }
 
   down () {
-    let index = listeners.indexOf(this);
+    let index = receivers.indexOf(this);
     if (index !== -1) {
-      listeners.splice(index, 1);
+      receivers.splice(index, 1);
     }
 
     this.node = undefined;
@@ -45,4 +45,4 @@ class MemoryListener extends EventEmitter {
   }
 }
 
-module.exports = { MemoryListener };
+module.exports = { MemoryReceiver };

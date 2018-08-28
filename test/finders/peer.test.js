@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { Node } = require('../../node');
-const { MemoryListener, MemoryDialer } = require('../../transports/memory');
+const { MemoryReceiver, MemoryDialer } = require('../../transports/memory');
 const { PeerFinder } = require('../../finders/peer');
 
 describe('PeerFinder', () => {
@@ -12,7 +12,7 @@ describe('PeerFinder', () => {
     let node2 = new Node();
     let node3 = new Node();
 
-    node1.addListener(new MemoryListener());
+    node1.addReceiver(new MemoryReceiver());
     node2.addDialer(new MemoryDialer());
     node3.addDialer(new MemoryDialer());
 

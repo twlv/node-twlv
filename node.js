@@ -12,9 +12,9 @@ class Node extends EventEmitter {
     this.networkId = networkId;
     this.identity = identity || Identity.generate();
     this.running = false;
-    this.listeners = [];
+    this.receivers = [];
     this.dialers = [];
-    this.registry = new Registry(networkId);
+    this.registry = new Registry(this);
     this.connections = [];
 
     this._incomingSocket = this._incomingSocket.bind(this);
@@ -30,61 +30,57 @@ class Node extends EventEmitter {
     let { networkId } = this;
     let { address, pubKey } = this.identity;
     let timestamp = new Date();
-    let urls = this.listeners.reduce((result, listener) => {
-      listener.urls.forEach(url => result.push(url));
+    let urls = this.receivers.reduce((result, receiver) => {
+      receiver.urls.forEach(url => result.push(url));
       return result;
     }, []);
     return { networkId, address, pubKey, urls, timestamp };
   }
 
-  // DEPRECATED
-  // async generate () {
-  //   if (this.running) {
-  //     throw new Error('Cannot generate identity on running node');
-  //   }
+  async addReceiver (receiver) {
+    receiver.on('socket', this._incomingSocket);
+    this.receivers.push(receiver);
 
-  //   this.identity = await Identity.generate();
-  // }
-
-  // authenticate (identity) {
-  //   if (this.running) {
-  //     throw new Error('Cannot authenticate on running node');
-  //   }
-
-  //   this.identity = identity;
-  // }
-
-  // deauthenticate () {
-  //   if (this.running) {
-  //     throw new Error('Cannot deauthenticate on running node');
-  //   }
-
-  //   this.identity = null;
-  // }
-
-  addListener (listener) {
     if (this.running) {
-      throw new Error('Cannot add listener on running node');
+      await receiver.up(this);
     }
-
-    listener.on('socket', this._incomingSocket);
-    this.listeners.push(listener);
   }
 
-  addDialer (dialer) {
-    if (this.running) {
-      throw new Error('Cannot add dialer on running node');
-    }
-
+  async addDialer (dialer) {
     this.dialers.push(dialer);
+    if (this.running) {
+      await dialer.up(this);
+    }
   }
 
-  addFinder (finder) {
+  async addFinder (finder) {
+    await this.registry.addFinder(finder);
+  }
+
+  async removeReceiver (receiver) {
     if (this.running) {
-      throw new Error('Cannot add finder on running node');
+      await receiver.down();
     }
 
-    this.registry.addFinder(finder);
+    receiver.removeListener('socket', this._incomingSocket);
+    let index = this.receivers.indexOf(receiver);
+    if (index !== -1) {
+      this.receivers.splice(index, 1);
+    }
+  }
+
+  async removeDialer (dialer) {
+    if (this.running) {
+      await dialer.down(this);
+    }
+    let index = this.dialers.indexOf(dialer);
+    if (index !== -1) {
+      this.dialers.splice(index, 1);
+    }
+  }
+
+  async removeFinder (finder) {
+    await this.registry.removeFinder(finder);
   }
 
   async start () {
@@ -96,8 +92,8 @@ class Node extends EventEmitter {
     this.connections = [];
 
     await Promise.all(this.dialers.map(dialer => typeof dialer.up === 'function' ? dialer.up(this) : undefined));
-    await Promise.all(this.listeners.map(listener => listener.up(this)));
-    await this.registry.up(this);
+    await Promise.all(this.receivers.map(receiver => receiver.up(this)));
+    await this.registry.up();
   }
 
   async stop () {
@@ -108,8 +104,8 @@ class Node extends EventEmitter {
     this.connections.forEach(connection => connection.destroy());
 
     await this.registry.down();
-    await Promise.all(this.listeners.map(listener => listener.down()));
-    await Promise.all(this.dialers.map(dialer => typeof dialer.down === 'function' ? dialer.down() : undefined));
+    await Promise.all(this.receivers.map(receiver => receiver.down()));
+    await Promise.all(this.dialers.map(dialer => dialer.down()));
 
     this.running = false;
   }
@@ -144,6 +140,7 @@ class Node extends EventEmitter {
         this.connections.splice(index, 1);
       }
     });
+
     try {
       let peer = await connection.handshake(this);
       // when connection to address already exist

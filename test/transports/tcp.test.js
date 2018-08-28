@@ -1,34 +1,34 @@
 const assert = require('assert');
-const { TcpDialer, TcpListener } = require('../../transports/tcp');
+const { TcpDialer, TcpReceiver } = require('../../transports/tcp');
 
 describe('Transport: Tcp', () => {
   it('dialing and listening', async () => {
-    let listener = new TcpListener();
+    let receiver = new TcpReceiver();
     let dialer = new TcpDialer();
 
-    let listenerSocket;
-    let listenerSocketReady = new Promise(resolve => {
-      listener.on('socket', socket => {
-        listenerSocket = socket;
+    let receiverSocket;
+    let receiverSocketReady = new Promise(resolve => {
+      receiver.on('socket', socket => {
+        receiverSocket = socket;
         resolve();
       });
     });
 
     try {
-      await listener.up();
+      await receiver.up();
 
-      let dialerSocket = await dialer.dial(`tcp://127.0.0.1:${listener.port}`);
+      let dialerSocket = await dialer.dial(`tcp://127.0.0.1:${receiver.port}`);
 
-      await listenerSocketReady;
+      await receiverSocketReady;
 
       assert(dialerSocket);
-      assert(listenerSocket);
+      assert(receiverSocket);
 
-      let listenerData;
+      let receiverData;
       let dialerData;
-      let listenerDataReady = new Promise(resolve => {
-        listenerSocket.on('data', data => {
-          listenerData = data.toString();
+      let receiverDataReady = new Promise(resolve => {
+        receiverSocket.on('data', data => {
+          receiverData = data.toString();
           resolve();
         });
       });
@@ -41,25 +41,25 @@ describe('Transport: Tcp', () => {
       });
 
       dialerSocket.write('foo');
-      listenerSocket.write('bar');
+      receiverSocket.write('bar');
 
-      await Promise.all([listenerDataReady, dialerDataReady]);
+      await Promise.all([receiverDataReady, dialerDataReady]);
 
-      assert.strictEqual(listenerData, 'foo');
+      assert.strictEqual(receiverData, 'foo');
       assert.strictEqual(dialerData, 'bar');
     } finally {
-      await listener.down();
+      await receiver.down();
     }
   });
 
   describe('#getUrls()', () => {
     it('return urls', async () => {
-      let listener = new TcpListener();
-      await listener.up();
+      let receiver = new TcpReceiver();
+      await receiver.up();
 
-      listener.urls.forEach(url => assert(url.startsWith('tcp:')));
+      receiver.urls.forEach(url => assert(url.startsWith('tcp:')));
 
-      await listener.down();
+      await receiver.down();
     });
   });
 });

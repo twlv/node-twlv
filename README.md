@@ -1,15 +1,16 @@
 # twlv
 
-## Listener
+## Receiver
 
-- Listener of incoming connection from other peer
-- Listener must have method up(node) and down
-- Listener must an EventEmitter
-- Listener must emit socket event on socket inbound
+- Receiver of incoming connection from other peer
+- Receiver must have method up(node) and down
+- Receiver must an EventEmitter
+- Receiver must emit socket event on socket inbound
 
 ## Dialer
 
 - Dialer to connect to other peer
+- Dialer must have method up(node) and down
 - Dialer must have dial method
 - Method dial throw error when no connection established
 

@@ -2,7 +2,7 @@ const { EventEmitter } = require('events');
 const net = require('net');
 const os = require('os');
 
-class TcpListener extends EventEmitter {
+class TcpReceiver extends EventEmitter {
   constructor ({ port } = {}) {
     super();
 
@@ -50,4 +50,4 @@ class TcpListener extends EventEmitter {
   }
 }
 
-module.exports = { TcpListener };
+module.exports = { TcpReceiver };

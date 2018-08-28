@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { Identity } = require('../identity');
 const { Node } = require('../node');
+const { EventEmitter } = require('events');
 
 describe('Node', () => {
   describe('constructor', () => {
@@ -8,31 +9,76 @@ describe('Node', () => {
       assert(new Node().identity instanceof Identity);
     });
 
-    it('create new node with supplied identity', () => {
+    it('create new node with specified identity', () => {
       let identity = Identity.generate();
       let node = new Node({ identity });
       assert.strictEqual(node.identity, identity);
     });
   });
 
-  describe('#addListener()', () => {
-    it('add new listener', () => {
-      let listenerMock = {
-        listen () {},
+  describe('#addReceiver()', () => {
+    it('add new receiver', () => {
+      let receiver = {
         on () {},
       };
       let node = new Node();
-      node.addListener(listenerMock);
-      assert.strictEqual(node.listeners[0], listenerMock);
+      node.addReceiver(receiver);
+      assert.strictEqual(node.receivers[0], receiver);
+    });
+
+    it('up receiver when node already started', async () => {
+      let receiver = {
+        on () {},
+
+        up () {
+          this.upped = true;
+        },
+      };
+      let node = new Node();
+
+      try {
+        await node.start();
+        node.addReceiver(receiver);
+        assert.strictEqual(node.receivers[0], receiver);
+        assert.strictEqual(receiver.upped, true);
+      } finally {
+        try { await node.stop(); } catch (err) {}
+      }
+    });
+  });
+
+  describe('#removeReceiver()', () => {
+    it('remove receiver', () => {
+      let receiver = new EventEmitter();
+      let node = new Node();
+      node.addReceiver(receiver);
+
+      assert.strictEqual(node.receivers[0], receiver);
+
+      node.removeReceiver(receiver);
+      assert.strictEqual(node.receivers.length, 0);
     });
   });
 
   describe('#addDialer()', () => {
     it('add new dialer', () => {
-      let dialerMock = {};
+      let dialer = {};
       let node = new Node();
-      node.addDialer(dialerMock);
-      assert.strictEqual(node.dialers[0], dialerMock);
+      node.addDialer(dialer);
+      assert.strictEqual(node.dialers[0], dialer);
+    });
+  });
+
+  describe('#removeDialer()', () => {
+    it('remove dialer', () => {
+      let dialer = new EventEmitter();
+      let node = new Node();
+      node.addDialer(dialer);
+
+      assert.strictEqual(node.dialers[0], dialer);
+
+      node.removeDialer(dialer);
+      assert.strictEqual(node.dialers.length, 0);
     });
   });
 
@@ -45,6 +91,14 @@ describe('Node', () => {
           this.dialedUrl = url;
           return {};
         },
+
+        up () {
+          // noop
+        },
+
+        down () {
+          // noop
+        },
       };
 
       let barDialer = {
@@ -53,6 +107,14 @@ describe('Node', () => {
         dial (url) {
           this.dialedUrl = url;
           return {};
+        },
+
+        up () {
+          // noop
+        },
+
+        down () {
+          // noop
         },
       };
       let node = new Node();
@@ -84,7 +146,7 @@ describe('Node', () => {
       let node = new Node();
 
       try {
-        node.addListener({
+        node.addReceiver({
           on () {},
           get urls () {
             return ['foo:1'];
@@ -93,7 +155,7 @@ describe('Node', () => {
           down () {},
         });
 
-        node.addListener({
+        node.addReceiver({
           on () {},
           get urls () {
             return ['bar:1'];

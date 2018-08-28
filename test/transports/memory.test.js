@@ -1,9 +1,9 @@
 const assert = require('assert');
-const { MemoryDialer, MemoryListener } = require('../../transports/memory');
+const { MemoryDialer, MemoryReceiver } = require('../../transports/memory');
 
 describe('Transport: Memory', () => {
   beforeEach(() => {
-    MemoryListener.reset();
+    MemoryReceiver.reset();
   });
 
   it('caught error on dialing unknown url', async () => {
@@ -20,23 +20,23 @@ describe('Transport: Memory', () => {
   });
 
   it('listening and dialing', async () => {
-    let listener = new MemoryListener();
+    let receiver = new MemoryReceiver();
     let dialer = new MemoryDialer();
 
-    let listenerSocket;
-    listener.on('socket', socket => {
-      listenerSocket = socket;
+    let receiverSocket;
+    receiver.on('socket', socket => {
+      receiverSocket = socket;
     });
 
     try {
-      await listener.up({ identity: { address: '1' } });
+      await receiver.up({ identity: { address: '1' } });
 
       let dialerSocket = await dialer.dial('memory:1');
 
-      let listenerData;
-      let listenerDataReady = new Promise(resolve => {
-        listenerSocket.on('data', data => {
-          listenerData = data.toString();
+      let receiverData;
+      let receiverDataReady = new Promise(resolve => {
+        receiverSocket.on('data', data => {
+          receiverData = data.toString();
           resolve();
         });
       });
@@ -50,14 +50,14 @@ describe('Transport: Memory', () => {
       });
 
       dialerSocket.write('foo');
-      listenerSocket.write('bar');
+      receiverSocket.write('bar');
 
-      await Promise.all([ listenerDataReady, dialerDataReady ]);
+      await Promise.all([ receiverDataReady, dialerDataReady ]);
 
-      assert.strictEqual(listenerData, 'foo');
+      assert.strictEqual(receiverData, 'foo');
       assert.strictEqual(dialerData, 'bar');
     } finally {
-      await listener.down();
+      await receiver.down();
     }
   });
 });

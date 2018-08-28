@@ -4,20 +4,41 @@ const { Peer } = require('./peer');
 const TIMEOUT_FIND = 3000;
 
 class Registry {
-  constructor (networkId) {
-    this.networkId = networkId;
+  constructor (node) {
+    this.node = node;
     this.finders = [];
     this.peers = [];
     this.tasks = [];
   }
 
-  addFinder (finder) {
-    this.finders.push(finder);
+  get networkId () {
+    return this.node.networkId;
   }
 
-  up (node) {
+  get running () {
+    return this.node.running;
+  }
+
+  async addFinder (finder) {
+    this.finders.push(finder);
+    if (this.running) {
+      await finder.up(this.node);
+    }
+  }
+
+  async removeFinder (finder) {
+    if (this.running) {
+      await finder.down();
+    }
+    let index = this.finders.indexOf(finder);
+    if (index !== -1) {
+      this.finders.splice(index, 1);
+    }
+  }
+
+  up () {
     this.tasks = [];
-    return Promise.all(this.finders.map(finder => finder.up(node)));
+    return Promise.all(this.finders.map(finder => finder.up(this.node)));
   }
 
   down () {

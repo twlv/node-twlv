@@ -1,4 +1,4 @@
 const { MemoryDialer } = require('./dialer');
-const { MemoryListener } = require('./listener');
+const { MemoryReceiver } = require('./receiver');
 
-module.exports = { MemoryDialer, MemoryListener };
+module.exports = { MemoryDialer, MemoryReceiver };
