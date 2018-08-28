@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { Identity } = require('../identity');
 const { Node } = require('../node');
+const { Message } = require('../message');
 const { EventEmitter } = require('events');
 
 describe('Node', () => {
@@ -79,6 +80,91 @@ describe('Node', () => {
 
       node.removeDialer(dialer);
       assert.strictEqual(node.dialers.length, 0);
+    });
+  });
+
+  describe('#addHandler()', () => {
+    it('add handler with static test', async () => {
+      let node = new Node();
+
+      await new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error('Got timeout')), 500);
+
+        node.on('message', () => reject(new Error('Uncaught handler')));
+
+        node.addHandler({
+          test: 'foo',
+          handle (message) {
+            resolve();
+          },
+        });
+
+        node._onConnectionMessage(Message.from({
+          from: 'foo',
+          to: node.identity.address,
+          command: 'foo',
+        }));
+      });
+    });
+
+    it('add handler with regexp test', async () => {
+      let node = new Node();
+
+      await new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error('Got timeout')), 500);
+
+        node.on('message', () => reject(new Error('Uncaught handler')));
+
+        node.addHandler({
+          test: /^foo/,
+          handle (message) {
+            resolve();
+          },
+        });
+
+        node._onConnectionMessage(Message.from({
+          from: 'foo',
+          to: node.identity.address,
+          command: 'foobar',
+        }));
+      });
+    });
+
+    it('add handler with function test', async () => {
+      let node = new Node();
+
+      await new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error('Got timeout')), 500);
+
+        node.on('message', () => reject(new Error('Uncaught handler')));
+
+        node.addHandler({
+          test (message) {
+            return message.command === 'foobar';
+          },
+          handle (message) {
+            resolve();
+          },
+        });
+
+        node._onConnectionMessage(Message.from({
+          from: 'foo',
+          to: node.identity.address,
+          command: 'foobar',
+        }));
+      });
+    });
+  });
+
+  describe('#removeHandler()', () => {
+    it('remove handler', () => {
+      let node = new Node();
+
+      let handler = { test: 'foo', handle () {} };
+
+      node.addHandler(handler);
+      node.removeHandler(handler);
+      assert.strictEqual(node.handlers.length, 0);
     });
   });
 

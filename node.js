@@ -14,6 +14,7 @@ class Node extends EventEmitter {
     this.running = false;
     this.receivers = [];
     this.dialers = [];
+    this.handlers = [];
     this.registry = new Registry(this);
     this.connections = [];
 
@@ -57,6 +58,10 @@ class Node extends EventEmitter {
     await this.registry.addFinder(finder);
   }
 
+  addHandler (handler) {
+    this.handlers.push(handler);
+  }
+
   async removeReceiver (receiver) {
     if (this.running) {
       await receiver.down();
@@ -81,6 +86,13 @@ class Node extends EventEmitter {
 
   async removeFinder (finder) {
     await this.registry.removeFinder(finder);
+  }
+
+  removeHandler (handler) {
+    let index = this.handlers.indexOf(handler);
+    if (index !== -1) {
+      this.handlers.splice(index, 1);
+    }
   }
 
   async start () {
@@ -256,14 +268,36 @@ class Node extends EventEmitter {
     });
   }
 
-  _onConnectionMessage (message) {
+  async _onConnectionMessage (message) {
     try {
       message.decrypt(this.identity);
+
+      let handler = this.handlers.find(handler => this._testHandler(handler, message));
+      if (handler) {
+        await handler.handle();
+        return;
+      }
 
       this.emit('message', message);
     } catch (err) {
       debug(`Node#_onConnectionMessage() caught: ${err.stack}`);
     }
+  }
+
+  _testHandler (handler, message) {
+    if (typeof handler.test === 'string') {
+      return message.command === handler.test;
+    }
+
+    if (handler.test instanceof RegExp) {
+      return Boolean(message.command.match(handler.test));
+    }
+
+    if (typeof handler.test === 'function') {
+      return handler.test(message);
+    }
+
+    throw new Error('Unsupported handler');
   }
 
   async _incomingSocket (socket) {
