@@ -16,6 +16,9 @@ class Node extends EventEmitter {
     this.dialers = [];
     this.registry = new Registry(networkId);
     this.connections = [];
+
+    this._incomingSocket = this._incomingSocket.bind(this);
+    this._onConnectionMessage = this._onConnectionMessage.bind(this);
   }
 
   get advertisement () {
@@ -34,36 +37,37 @@ class Node extends EventEmitter {
     return { networkId, address, pubKey, urls, timestamp };
   }
 
-  async generate () {
-    if (this.running) {
-      throw new Error('Cannot generate identity on running node');
-    }
+  // DEPRECATED
+  // async generate () {
+  //   if (this.running) {
+  //     throw new Error('Cannot generate identity on running node');
+  //   }
 
-    this.identity = await Identity.generate();
-  }
+  //   this.identity = await Identity.generate();
+  // }
 
-  authenticate (identity) {
-    if (this.running) {
-      throw new Error('Cannot authenticate on running node');
-    }
+  // authenticate (identity) {
+  //   if (this.running) {
+  //     throw new Error('Cannot authenticate on running node');
+  //   }
 
-    this.identity = identity;
-  }
+  //   this.identity = identity;
+  // }
 
-  deauthenticate () {
-    if (this.running) {
-      throw new Error('Cannot deauthenticate on running node');
-    }
+  // deauthenticate () {
+  //   if (this.running) {
+  //     throw new Error('Cannot deauthenticate on running node');
+  //   }
 
-    this.identity = null;
-  }
+  //   this.identity = null;
+  // }
 
   addListener (listener) {
     if (this.running) {
       throw new Error('Cannot add listener on running node');
     }
 
-    listener.on('socket', this._incomingSocket.bind(this));
+    listener.on('socket', this._incomingSocket);
     this.listeners.push(listener);
   }
 
@@ -91,6 +95,7 @@ class Node extends EventEmitter {
     this.running = true;
     this.connections = [];
 
+    await Promise.all(this.dialers.map(dialer => typeof dialer.up === 'function' ? dialer.up(this) : undefined));
     await Promise.all(this.listeners.map(listener => listener.up(this)));
     await this.registry.up(this);
   }
@@ -100,10 +105,12 @@ class Node extends EventEmitter {
       throw new Error('Cannot stop stopped node');
     }
 
+    this.connections.forEach(connection => connection.destroy());
+
     await this.registry.down();
     await Promise.all(this.listeners.map(listener => listener.down()));
+    await Promise.all(this.dialers.map(dialer => typeof dialer.down === 'function' ? dialer.down() : undefined));
 
-    this.connections.forEach(connection => connection.destroy());
     this.running = false;
   }
 
@@ -146,7 +153,7 @@ class Node extends EventEmitter {
         connection = oldConnection;
       } else {
         this.connections.push(connection);
-        connection.on('data', this._onConnectionMessage.bind(this));
+        connection.on('data', this._onConnectionMessage);
         this.emit('connection', connection);
       }
 
@@ -258,7 +265,7 @@ class Node extends EventEmitter {
 
       this.emit('message', message);
     } catch (err) {
-      debug(`Node#_onConnectionMessage caught: ${err.stack}`);
+      debug(`Node#_onConnectionMessage() caught: ${err.stack}`);
     }
   }
 
@@ -266,7 +273,7 @@ class Node extends EventEmitter {
     try {
       await this._connect(socket);
     } catch (err) {
-      debug(`Node#_incomingSocket caught: ${err.stack}`);
+      debug(`Node#_incomingSocket() caught: ${err.stack}`);
     }
   }
 }

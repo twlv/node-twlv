@@ -12,18 +12,21 @@ class Connection extends Duplex {
     this.encoder = lpstream.encode();
     this.decoder = lpstream.decode();
 
-    this.encoder.pipe(socket).pipe(this.decoder);
+    this.encoder.pipe(this.socket).pipe(this.decoder);
+
+    this._onSocketClose = this._onSocketClose.bind(this);
+    this._onReadable = this._onReadable.bind(this);
 
     // event close better then end
-    socket.on('end', this._onSocketClose.bind(this));
-    socket.on('close', this._onSocketClose.bind(this));
+    this.socket.on('end', this._onSocketClose);
+    this.socket.on('close', this._onSocketClose);
   }
 
   async handshake (node) {
     try {
       let unit = this._handshaking = new HandshakingUnit(this, node);
       this.peer = new Peer(await unit.run());
-      this.decoder.on('readable', this._onReadable.bind(this));
+      this.decoder.on('readable', this._onReadable);
       this._onReadable();
       return this.peer;
     } finally {
@@ -64,6 +67,10 @@ class Connection extends Duplex {
   }
 
   _destroy (err, callback) {
+    this.socket.removeListener('end', this._onSocketClose);
+    this.socket.removeListener('close', this._onSocketClose);
+    this.decoder.removeListener('readable', this._onReadable);
+
     this.socket.destroy();
     this.encoder.destroy();
     this.decoder.destroy();
