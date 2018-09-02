@@ -18,14 +18,15 @@ describe('cases', () => {
       let node2 = new Node();
 
       try {
-        node1.addReceiver(new MemoryReceiver());
         node1.addFinder(new MemoryFinder());
 
         node2.addReceiver(new MemoryReceiver());
         node2.addFinder(new MemoryFinder());
 
-        await node1.start();
-        await node2.start();
+        await Promise.all([
+          node1.start(),
+          node2.start(),
+        ]);
 
         let peer = await node1.find(node2.identity.address);
 
@@ -33,8 +34,8 @@ describe('cases', () => {
         assert.strictEqual(peer.pubKey, node2.identity.pubKey);
         assert.strictEqual(peer.urls[0], `memory:${node2.identity.address}`);
       } finally {
-        await node1.stop();
-        await node2.stop();
+        try { await node1.stop(); } catch (err) { /* noop */ }
+        try { await node2.stop(); } catch (err) { /* noop */ }
       }
     });
 
@@ -144,7 +145,7 @@ describe('cases', () => {
     });
   });
 
-  describe('send to peers', () => {
+  describe('send to peer', () => {
     it('throw error when sending to itself', async () => {
       let node = new Node();
 
@@ -169,81 +170,89 @@ describe('cases', () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addReceiver(new MemoryReceiver());
-      node1.addDialer(new MemoryDialer());
-      node1.addFinder(new MemoryFinder());
+      try {
+        node1.addDialer(new MemoryDialer());
+        node1.addFinder(new MemoryFinder());
 
-      node2.addReceiver(new MemoryReceiver());
-      node2.addDialer(new MemoryDialer());
-      node2.addFinder(new MemoryFinder());
+        node2.addReceiver(new MemoryReceiver());
+        node2.addFinder(new MemoryFinder());
 
-      await node1.start();
-      await node2.start();
+        await node1.start();
+        await node2.start();
 
-      await new Promise(async (resolve, reject) => {
-        try {
-          node2.on('message', message => {
-            try {
-              assert.strictEqual(message.from, node1.identity.address);
-              assert.strictEqual(message.to, node2.identity.address);
-              assert.strictEqual(message.command, 'foo');
-              assert.strictEqual(message.payload.toString(), 'bar');
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          });
+        await new Promise(async (resolve, reject) => {
+          try {
+            node2.on('message', message => {
+              try {
+                assert.strictEqual(message.from, node1.identity.address);
+                assert.strictEqual(message.to, node2.identity.address);
+                assert.strictEqual(message.command, 'foo');
+                assert.strictEqual(message.payload.toString(), 'bar');
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            });
 
-          await node1.send({
-            to: node2.identity.address,
-            command: 'foo',
-            payload: 'bar',
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
+            await node1.send({
+              to: node2.identity.address,
+              command: 'foo',
+              payload: 'bar',
+            });
+          } catch (err) {
+            reject(err);
+          }
+        });
+      } finally {
+        try { await node1.stop(); } catch (err) { /* noop */ }
+        try { await node2.stop(); } catch (err) { /* noop */ }
+      }
     });
 
     it('broadcast', async () => {
       let node1 = new Node();
       let node2 = new Node();
 
-      node1.addReceiver(new MemoryReceiver());
-      node1.addDialer(new MemoryDialer());
-      node1.addFinder(new MemoryFinder());
+      try {
+        node1.addReceiver(new MemoryReceiver());
+        node1.addDialer(new MemoryDialer());
+        node1.addFinder(new MemoryFinder());
 
-      node2.addReceiver(new MemoryReceiver());
-      node2.addDialer(new MemoryDialer());
-      node2.addFinder(new MemoryFinder());
+        node2.addReceiver(new MemoryReceiver());
+        node2.addDialer(new MemoryDialer());
+        node2.addFinder(new MemoryFinder());
 
-      await node1.start();
-      await node2.start();
+        await node1.start();
+        await node2.start();
 
-      await node1.connect(node2.identity.address);
+        await node1.connect(node2.identity.address);
 
-      await new Promise(async (resolve, reject) => {
-        try {
-          node2.on('message', message => {
-            try {
-              assert.strictEqual(message.from, node1.identity.address);
-              assert.strictEqual(message.to, node2.identity.address);
-              assert.strictEqual(message.command, 'foo');
-              assert.strictEqual(message.payload.toString(), 'bar');
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          });
+        await new Promise(async (resolve, reject) => {
+          try {
+            node2.on('message', message => {
+              try {
+                assert.strictEqual(message.from, node1.identity.address);
+                assert.strictEqual(message.to, node2.identity.address);
+                assert.strictEqual(message.command, 'foo');
+                assert.strictEqual(message.payload.toString(), 'bar');
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            });
 
-          await node1.broadcast({
-            command: 'foo',
-            payload: 'bar',
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
+            await node1.broadcast({
+              command: 'foo',
+              payload: 'bar',
+            });
+          } catch (err) {
+            reject(err);
+          }
+        });
+      } finally {
+        try { await node1.stop(); } catch (err) { /* noop */ }
+        try { await node2.stop(); } catch (err) { /* noop */ }
+      }
     });
   });
 

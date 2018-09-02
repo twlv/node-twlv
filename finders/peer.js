@@ -4,7 +4,15 @@ class PeerFinder {
   constructor () {
     this.name = 'peer';
 
-    this._onNodeMessage = this._onNodeMessage.bind(this);
+    this.reqHandler = {
+      test: 'peerfinder.req',
+      handle: this._onReq.bind(this),
+    };
+
+    this.resHandler = {
+      test: 'peerfinder.res',
+      handle: this._onRes.bind(this),
+    };
   }
 
   find (address) {
@@ -14,35 +22,35 @@ class PeerFinder {
     });
   }
 
-  async _onNodeMessage (message) {
-    if (!this.node || !message.command.startsWith('peerfinder.')) {
-      return;
-    }
-
+  async _onReq (message) {
     try {
-      if (message.command === 'peerfinder.req') {
-        let reqAddr = message.payload.toString();
-        let peerInfo = await this.node.registry.get(reqAddr);
-        if (!peerInfo) {
+      let reqAddr = message.payload.toString();
+      let peerInfo = await this.node.registry.get(reqAddr);
+      if (!peerInfo) {
+        return;
+      }
+
+      await this.node.send({
+        to: message.from,
+        command: 'peerfinder.res',
+        payload: JSON.stringify(peerInfo),
+      });
+    } catch (err) {
+      if (debug.enabled) debug(`PeerFinder#_onReq() caught: ${err.stack}`);
+    }
+  }
+
+  _onRes (message) {
+    try {
+      let peerInfo = JSON.parse(message.payload);
+      this.works = this.works.filter(work => {
+        if (work.address !== peerInfo.address) {
           return;
         }
-
-        await this.node.send({
-          to: message.from,
-          command: 'peerfinder.res',
-          payload: JSON.stringify(peerInfo),
-        });
-      } else if (message.command === 'peerfinder.res') {
-        let peerInfo = JSON.parse(message.payload);
-        this.works = this.works.filter(work => {
-          if (work.address !== peerInfo.address) {
-            return;
-          }
-          work.resolve(peerInfo);
-        });
-      }
+        work.resolve(peerInfo);
+      });
     } catch (err) {
-      debug(`PeerFinder caught: ${err.stack}`);
+      if (debug.enabled) debug(`PeerFinder#_onRes() caught: ${err.stack}`);
     }
   }
 
@@ -50,14 +58,16 @@ class PeerFinder {
     this.works = [];
 
     this.node = node;
-    this.node.on('message', this._onNodeMessage);
+    this.node.addHandler(this.reqHandler);
+    this.node.addHandler(this.resHandler);
   }
 
   down () {
     this.works.forEach(work => work.resolve());
     this.works = [];
 
-    this.node.removeListener('message', this._onNodeMessage);
+    this.node.removeHandler(this.reqHandler);
+    this.node.removeHandler(this.resHandler);
     this.node = undefined;
   }
 }

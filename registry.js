@@ -15,12 +15,19 @@ class Registry {
     return this.node.networkId;
   }
 
+  get shortAddress () {
+    return this.node.shortAddress;
+  }
+
   get running () {
     return this.node.running;
   }
 
   async addFinder (finder) {
     this.finders.push(finder);
+
+    if (debug.enabled) debug('%s Add finder %s', this.shortAddress, finder.name);
+
     if (this.running) {
       await finder.up(this.node);
     }
@@ -30,6 +37,9 @@ class Registry {
     if (this.running) {
       await finder.down();
     }
+
+    if (debug.enabled) debug('%s Remove finder %s', this.shortAddress, finder.name);
+
     let index = this.finders.indexOf(finder);
     if (index !== -1) {
       this.finders.splice(index, 1);
@@ -38,13 +48,23 @@ class Registry {
 
   up () {
     this.tasks = [];
-    return Promise.all(this.finders.map(finder => finder.up(this.node)));
+    return Promise.all(this.finders.map(finder => this._up(finder)));
   }
 
   down () {
     this.tasks.forEach(task => task.reject(new Error('Registry down')));
     this.tasks = [];
-    return Promise.all(this.finders.map(finder => finder.down()));
+    return Promise.all(this.finders.map(finder => this._down(finder)));
+  }
+
+  async _up (finder) {
+    await finder.up(this.node);
+    if (debug.enabled) debug('%s Finder %s up', this.shortAddress, finder.name);
+  }
+
+  async _down (finder) {
+    await finder.down();
+    if (debug.enabled) debug('%s Finder %s down', this.shortAddress, finder.name);
   }
 
   async find (address, { timeout = TIMEOUT_FIND, cache = true } = {}) {
@@ -93,7 +113,7 @@ class Registry {
           clearTimeout(_t);
           _resolve(peerInfo);
         } catch (err) {
-          debug(`Finder caught: ${err.stack}`);
+          if (debug.enabled) debug(`Finder caught: ${err.stack}`);
         }
       }));
 
@@ -101,7 +121,10 @@ class Registry {
       _reject(new Error(`Peer not found, address: ${address}`));
     });
 
-    return this.put(peerInfo);
+    let peer = await this.put(peerInfo);
+
+    if (debug.enabled) debug('%s Found peer %s', this.shortAddress, peer.address);
+    return peer;
   }
 
   get (address) {

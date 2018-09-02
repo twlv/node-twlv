@@ -22,10 +22,14 @@ class Node extends EventEmitter {
     this._onConnectionMessage = this._onConnectionMessage.bind(this);
   }
 
+  get shortAddress () {
+    return this.identity.address.substr(0, 4);
+  }
+
   get advertisement () {
     // do not advertise when node is not running
     if (!this.running) {
-      return;
+      throw new Error('No advertisement on stopped node');
     }
 
     let { networkId } = this;
@@ -42,15 +46,20 @@ class Node extends EventEmitter {
     receiver.on('socket', this._incomingSocket);
     this.receivers.push(receiver);
 
+    if (debug.enabled) debug('%s Receiver %s added', this.shortAddress, receiver.proto);
+
     if (this.running) {
-      await receiver.up(this);
+      await this._receiverUp(receiver);
     }
   }
 
   async addDialer (dialer) {
     this.dialers.push(dialer);
+
+    if (debug.enabled) debug('%s Dialer %s added', this.shortAddress, dialer.proto);
+
     if (this.running) {
-      await dialer.up(this);
+      await this._dialerUp(dialer);
     }
   }
 
@@ -60,14 +69,19 @@ class Node extends EventEmitter {
 
   addHandler (handler) {
     this.handlers.push(handler);
+
+    if (debug.enabled) debug('%s Handler %s added', this.shortAddress, getHandlerName(handler));
   }
 
   async removeReceiver (receiver) {
     if (this.running) {
-      await receiver.down();
+      await this._receiverDown(receiver);
     }
 
     receiver.removeListener('socket', this._incomingSocket);
+
+    if (debug.enabled) debug('%s Receiver %s removed', this.shortAddress, receiver.proto);
+
     let index = this.receivers.indexOf(receiver);
     if (index !== -1) {
       this.receivers.splice(index, 1);
@@ -76,8 +90,11 @@ class Node extends EventEmitter {
 
   async removeDialer (dialer) {
     if (this.running) {
-      await dialer.down(this);
+      await this._dialerDown(dialer);
     }
+
+    if (debug.enabled) debug('%s Dialer %s removed', this.shortAddress, dialer.proto);
+
     let index = this.dialers.indexOf(dialer);
     if (index !== -1) {
       this.dialers.splice(index, 1);
@@ -93,6 +110,8 @@ class Node extends EventEmitter {
     if (index !== -1) {
       this.handlers.splice(index, 1);
     }
+
+    if (debug.enabled) debug('%s Handler %s removed', this.shortAddress, getHandlerName(handler));
   }
 
   async start () {
@@ -103,9 +122,11 @@ class Node extends EventEmitter {
     this.running = true;
     this.connections = [];
 
-    await Promise.all(this.dialers.map(dialer => typeof dialer.up === 'function' ? dialer.up(this) : undefined));
-    await Promise.all(this.receivers.map(receiver => receiver.up(this)));
+    await Promise.all(this.dialers.map(dialer => this._dialerUp(dialer)));
+    await Promise.all(this.receivers.map(receiver => this._receiverUp(receiver)));
     await this.registry.up();
+
+    if (debug.enabled) debug('%s Node started', this.shortAddress);
   }
 
   async stop () {
@@ -116,10 +137,12 @@ class Node extends EventEmitter {
     this.connections.forEach(connection => connection.destroy());
 
     await this.registry.down();
-    await Promise.all(this.receivers.map(receiver => receiver.down()));
-    await Promise.all(this.dialers.map(dialer => dialer.down()));
+    await Promise.all(this.receivers.map(receiver => this._receiverDown(receiver)));
+    await Promise.all(this.dialers.map(dialer => this._dialerDown(dialer)));
 
     this.running = false;
+
+    if (debug.enabled) debug('%s Node stopped', this.shortAddress);
   }
 
   find (address, options) {
@@ -144,7 +167,7 @@ class Node extends EventEmitter {
     return dialer.dial(url, this);
   }
 
-  async _connect (socket) {
+  async _connectBySocket (socket) {
     let connection = new Connection({ socket });
     connection.on('close', () => {
       let index = this.connections.indexOf(connection);
@@ -174,16 +197,23 @@ class Node extends EventEmitter {
     }
   }
 
-  async connect (url) {
+  async connect (addressOrUrl) {
     if (!this.running) {
       throw new Error('Cannot connect on stopped node');
     }
 
-    if (url.includes(':')) {
-      return this._connect(await this.dial(url));
-    }
+    let connection = addressOrUrl.includes(':')
+      ? await this._connectByUrl(addressOrUrl)
+      : await this._connectByAddress(addressOrUrl);
 
-    return this._connectByAddress(url);
+    if (debug.enabled) debug('%s Connected peer %s', this.shortAddress, connection.peer.address);
+
+    return connection;
+  }
+
+  async _connectByUrl (url) {
+    let connection = await this._connectBySocket(await this.dial(url));
+    return connection;
   }
 
   async _connectByAddress (address) {
@@ -215,14 +245,14 @@ class Node extends EventEmitter {
     let urls = peer.getEligibleUrls(this);
     for (let url of urls) {
       try {
-        let connection = await this.connect(url);
+        let connection = await this._connectByUrl(url);
         if (connection.peer.address !== peer.address) {
           connection.destroy();
           throw new Error('Connect to invalid peer address ' + peer.address);
         }
         return connection;
       } catch (err) {
-        debug(`Node#_connectByPeer caught: ${err.stack}`);
+        if (debug.enabled) debug(`Node#_connectByPeer caught: ${err.stack}`);
       }
     }
   }
@@ -245,6 +275,8 @@ class Node extends EventEmitter {
     message.sign(this.identity);
 
     connection.write(message);
+
+    if (debug.enabled) debug('%s Message sent to %s', this.shortAddress, message.to);
   }
 
   broadcast (message, excludes = []) {
@@ -274,13 +306,13 @@ class Node extends EventEmitter {
 
       let handler = this.handlers.find(handler => this._testHandler(handler, message));
       if (handler) {
-        await handler.handle();
+        await handler.handle(message);
         return;
       }
 
       this.emit('message', message);
     } catch (err) {
-      debug(`Node#_onConnectionMessage() caught: ${err.stack}`);
+      if (debug.enabled) debug(`Node#_onConnectionMessage() caught: ${err.stack}`);
     }
   }
 
@@ -302,10 +334,52 @@ class Node extends EventEmitter {
 
   async _incomingSocket (socket) {
     try {
-      await this._connect(socket);
+      await this._connectBySocket(socket);
     } catch (err) {
-      debug(`Node#_incomingSocket() caught: ${err.stack}`);
+      if (debug.enabled) debug(`Node#_incomingSocket() caught: ${err.stack}`);
     }
+  }
+
+  async _dialerUp (dialer) {
+    await dialer.up(this);
+
+    if (debug.enabled) debug('%s Dialer %s up', this.shortAddress, dialer.proto);
+  }
+
+  async _dialerDown (dialer) {
+    await dialer.down(this);
+
+    if (debug.enabled) debug('%s Dialer %s up', this.shortAddress, dialer.proto);
+  }
+
+  async _receiverUp (receiver) {
+    await receiver.up(this);
+
+    if (debug.enabled) debug('%s Receiver %s up', this.shortAddress, receiver.proto);
+  }
+
+  async _receiverDown (receiver) {
+    await receiver.down(this);
+
+    if (debug.enabled) debug('%s Receiver %s up', this.shortAddress, receiver.proto);
+  }
+}
+
+function getHandlerName (handler) {
+  if (handler.name) {
+    return handler.name;
+  }
+
+  if (typeof handler.test === 'string') {
+    return handler.test;
+  }
+
+  if (handler.test instanceof RegExp) {
+    return `regexp:${handler.test}`;
+  }
+
+  if (typeof handler.test === 'function') {
+    return `fn:${handler.test.name}`;
   }
 }
 

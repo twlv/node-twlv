@@ -43,7 +43,7 @@ describe('Node', () => {
         assert.strictEqual(node.receivers[0], receiver);
         assert.strictEqual(receiver.upped, true);
       } finally {
-        try { await node.stop(); } catch (err) {}
+        try { await node.stop(); } catch (err) { /* noop */ }
       }
     });
   });
@@ -223,10 +223,10 @@ describe('Node', () => {
   });
 
   describe('#advertisement', () => {
-    it('return empty advertisement from stopped node', () => {
+    it('throw error get advertisement from stopped node', () => {
       let node = new Node();
 
-      assert(!node.advertisement);
+      assert.throws(() => node.advertisement);
     });
     it('has address and pubKey field', async () => {
       let node = new Node();

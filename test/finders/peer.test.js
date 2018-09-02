@@ -20,16 +20,23 @@ describe('PeerFinder', () => {
     node2.addFinder(new PeerFinder());
     node3.addFinder(new PeerFinder());
 
-    await node1.start();
-    await node2.start();
-    await node3.start();
+    try {
+      await node1.start();
+      await node2.start();
+      await node3.start();
 
-    await node2.connect(`memory:${node1.identity.address}`);
-    await node3.connect(`memory:${node1.identity.address}`);
+      await node2.connect(`memory:${node1.identity.address}`);
+      await node3.connect(`memory:${node1.identity.address}`);
 
-    let peer = await node2.find(node3.identity.address);
-    assert(peer);
-    assert.strictEqual(peer.address, node3.identity.address);
-    assert.strictEqual(peer.pubKey, node3.identity.pubKey);
+      let peer = await node2.find(node3.identity.address);
+
+      assert(peer);
+      assert.strictEqual(peer.address, node3.identity.address);
+      assert.strictEqual(peer.pubKey, node3.identity.pubKey);
+    } finally {
+      try { await node1.stop(); } catch (err) { /* noop */ }
+      try { await node2.stop(); } catch (err) { /* noop */ }
+      try { await node3.stop(); } catch (err) { /* noop */ }
+    }
   });
 });
