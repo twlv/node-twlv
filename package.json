@@ -1,6 +1,6 @@
 {
   "name": "@twlv/core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "TWLV P2P Framework",
   "main": "index.js",
   "repository": {
@@ -29,7 +29,7 @@
     "nyc": "^13.0.1"
   },
   "dependencies": {
-    "debug": "^3.1.0",
+    "debug": "^3.2.1",
     "js-sha3": "^0.8.0",
     "length-prefixed-stream": "^1.6.0",
     "node-rsa": "^1.0.1"

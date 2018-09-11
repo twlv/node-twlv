@@ -134,7 +134,18 @@ class Node extends EventEmitter {
       throw new Error('Cannot stop stopped node');
     }
 
-    this.connections.forEach(connection => connection.destroy());
+    while (this.connections.length) {
+      let con = this.connections[0];
+      await new Promise((resolve, reject) => {
+        try {
+          con.on('close', resolve);
+          con.destroy();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+    // this.connections.forEach(connection => connection.destroy());
 
     await this.registry.down();
     await Promise.all(this.receivers.map(receiver => this._receiverDown(receiver)));
