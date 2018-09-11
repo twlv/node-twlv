@@ -1,6 +1,6 @@
 {
   "name": "@twlv/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TWLV P2P Framework",
   "main": "index.js",
   "repository": {
@@ -22,7 +22,7 @@
     "eslint-config-xinix": "^1.1.2",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-node": "^7.0.1",
-    "eslint-plugin-promise": "^4.0.0",
+    "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
     "husky": "^0.14.3",
     "mocha": "^5.2.0",

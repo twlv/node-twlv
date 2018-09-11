@@ -306,7 +306,7 @@ class Node extends EventEmitter {
 
       let handler = this.handlers.find(handler => this._testHandler(handler, message));
       if (handler) {
-        await handler.handle(message);
+        await handler.handle(message, this);
         return;
       }
 
